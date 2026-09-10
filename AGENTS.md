@@ -26,6 +26,10 @@ Codex는 작업을 완료할 때마다 이 문서와 README.md를 함께 갱신�
 ```
 index.html          — 메인 앱 (단일 파일, 인라인 CSS/JS)
 admin.html          — 대표님(운영자) 전용 관리 화면
+landing.html        — 소셜 광고 유입용 랜딩 페이지
+about.html          — 서비스 소개 및 제작 취지
+legal.html          — 법적고지, 개인정보처리방침, 면책조항
+site-config.js      — 공개 페이지 공통 설정(문의 이메일 등)
 apps-script/Code.gs — Google Apps Script 백엔드 (Apps Script 에디터에 수동 배포)
 AGENTS.md            — 이 문서
 README.md            — 사람이 읽는 설명서
@@ -81,15 +85,35 @@ README.md            — 사람이 읽는 설명서
 - **정산**: 시공완료·미지급 건의 하청비를 지급 처리하며, 정부 정산 수령은 별도 필드로 독립 기록한다.
 - `Code.gs`는 `registerContractor`, `updateContractor`, `assignCaseToContractor`, `getUnassignedCases`, `getDashboardSummary`, `recordSubPayment`, `recordGovReimbursement` 동작을 API 분기로 제공한다.
 
+## 4.2 공개 페이지 요구사항
+
+- **landing.html**: 모바일 우선 광고 유입 페이지로, 무료 자격 확인 CTA(index.html), 혜택 요약, 민간 신청 지원 서비스 고지, 소개/법적고지 링크를 제공한다. 확정 지원금 광고 문구는 사용하지 않는다.
+- **about.html**: 서비스의 정보 격차 해소 취지, 대상 프로그램, 민간 신청 대행·시공 연결 역할, 운영자/라이선스/연락처를 안내한다.
+- **legal.html**: 비공식 관계·예비 판정·운영 조건 변경·비자문 면책, 고객 무료 원칙, 개인정보 수집·Google Sheets 보관·비판매·SSN 미수집·삭제 요청 절차를 고지한다.
+- 모든 공개 페이지의 문의 이메일은 `site-config.js`의 `SITE_CONFIG.contactEmail`을 사용하며, 값은 `jdlee.electric@gmail.com`으로 통일한다.
+
 ## 5. 지켜야 할 것
 
 - FinCRM(tubasa22.github.io/Fincrm) 등 다른 저장소 파일은 건드리지 않는다 — 완전히 독립된 저장소.
 - 소득 등 민감정보는 Google Sheets에만, localStorage는 세션 임시값만.
 - 프로그램 기준(금액/소득기준)은 상단 CONFIG 객체로 분리.
 - 관리자 전용 단가·계약정보·Payments는 admin API 응답에서만 제공하며 컨트랙터 API에는 포함하지 않는다.
+- 고객/컨트랙터/관리자 앱의 기존 기능 로직은 공개 페이지 추가 시 변경하지 않으며, 푸터 링크와 공통 문의처 설정만 최소 반영한다.
 - 모든 UI 텍스트는 한국어.
 
 ## 6. 현재 상태
+
+- 화면 구조:
+
+| 구분 | 파일 | 역할 |
+| --- | --- | --- |
+| 공개 | landing.html | 소셜 광고 유입 및 무료 자격 확인 유도 |
+| 공개 | about.html | 서비스 취지·프로그램·운영자 정보 안내 |
+| 공개 | legal.html | 면책, 고객 무료 원칙, 개인정보처리방침 |
+| 공개 | index.html | 고객 인테이크 및 인센티브 예비 매칭 |
+| 앱 | contractor.html | 컨트랙터 배정 케이스 처리 화면 (추가 예정) |
+| 앱 | admin.html | 운영자 업체·배정·파이프라인·정산 관리 |
+| 공통 | site-config.js | 공개 페이지 문의처 설정 |
 
 - [x] index.html 구현 완료: 다단계 인테이크, ZIP 추정 매핑, 순수 JS 매칭 룰 엔진, 결과·케이스 관리 화면
 - [x] apps-script/Code.gs 구현 완료: Cases/StatusHistory 자동 생성, 케이스 생성·조회·상태 변경 API
@@ -97,6 +121,7 @@ README.md            — 사람이 읽는 설명서
 - [ ] 컨트랙터 화면(contractor.html): 배정 케이스 조회용 화면은 아직 추가되지 않음
 - [x] 관리자 화면(admin.html): 업체·배정·파이프라인·하청비/정부정산 관리
 - [x] 관리자 API: Contractors/Payments 시트와 관리자 인증, 업체 등록·배정·정산 API 구현
+- [x] 공개 페이지: 광고 랜딩, 서비스 소개, 법적고지/개인정보처리방침 및 공통 문의처 설정 구현
 
 ## 7. 다음 세션에서 할 일
 
@@ -105,6 +130,7 @@ README.md            — 사람이 읽는 설명서
 - 계정 여러 개 지원 및 역할 기반 권한 관리
 - Google Drive API를 통한 계약서 링크/권한 실연동
 - contractor.html 추가 후 배정 케이스 노출 API 연동
+- 운영자 이름과 CA 보험업 라이선스 번호 확정 후 about.html에 반영
 
 ## 8. 확인 필요 항목
 
