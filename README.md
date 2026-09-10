@@ -21,6 +21,7 @@
 3. 배포된 Apps Script URL을 `index.html` 및 `admin.html` 상단 `CONFIG.apiUrl`에 입력
 4. Apps Script 프로젝트의 Script Properties에 관리자 비밀번호를 `ADMIN_PASSWORD` 키로 설정
 5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
+6. SMS OTP를 사용할 경우 Apps Script Script Properties에 `FEATURES_SMS_ENABLED=true`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`을 설정
 
 ## 광고 유입 페이지
 
@@ -39,3 +40,5 @@
 - [x] 하청비 지급과 정부 정산 수령의 독립 관리
 - [x] 광고 유입용 랜딩 페이지 및 서비스 소개 페이지
 - [x] 법적고지·개인정보처리방침 페이지
+- [x] 컨트랙터 로그인·배정 건 관리·계약서 제출 화면
+- [x] SMS OTP(선택 기능) 및 CSLB 수동 라이선스 확인 흐름
