@@ -6,7 +6,7 @@
 
 ## 현재 상태
 
-인테이크 기반의 프로그램 매칭과 Google Sheets 케이스 이력 관리 기능이 구현되었습니다.
+고객 인테이크 기반의 프로그램 매칭, 케이스 이력 관리 및 운영자 관리자 화면이 구현되었습니다.
 
 ## 기술 스택
 
@@ -18,7 +18,9 @@
 
 1. 이 저장소를 GitHub Pages로 배포 (Settings → Pages → main 브랜치 선택)
 2. `apps-script/Code.gs` 내용을 Google Apps Script 프로젝트에 붙여넣고 웹앱으로 배포
-3. 배포된 Apps Script URL을 `index.html` 상단 CONFIG에 입력
+3. 배포된 Apps Script URL을 `index.html` 및 `admin.html` 상단 `CONFIG.apiUrl`에 입력
+4. Apps Script 프로젝트의 Script Properties에 관리자 비밀번호를 `ADMIN_PASSWORD` 키로 설정
+5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
 
 ## 기능 목록
 
@@ -26,3 +28,8 @@
 - [x] 프로그램 자격 판정 및 매칭
 - [x] 케이스 저장 (Google Sheets)
 - [x] 케이스 상태 이력 관리
+- [x] 관리자 비밀번호 로그인
+- [x] 업체(컨트랙터) 등록·수정·비활성화 및 실적 요약
+- [x] 미배정 케이스의 업체 배정 및 상태 이력 기록
+- [x] 전체 파이프라인·지연 케이스 대시보드
+- [x] 하청비 지급과 정부 정산 수령의 독립 관리

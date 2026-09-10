@@ -25,6 +25,7 @@ Codex는 작업을 완료할 때마다 이 문서와 README.md를 함께 갱신�
 
 ```
 index.html          — 메인 앱 (단일 파일, 인라인 CSS/JS)
+admin.html          — 대표님(운영자) 전용 관리 화면
 apps-script/Code.gs — Google Apps Script 백엔드 (Apps Script 에디터에 수동 배포)
 AGENTS.md            — 이 문서
 README.md            — 사람이 읽는 설명서
@@ -60,30 +61,52 @@ README.md            — 사람이 읽는 설명서
 
 ## 4. Google Sheets 데이터 구조
 
-**Sheet 1 "Cases"**: CaseID, 생성일시, 담당자, 신청자정보(JSON), 매칭프로그램목록(JSON), 현재상태, 최종수정일시
+**Sheet 1 "Cases"**: CaseID, 생성일시, 담당자, 신청자정보(JSON), 매칭프로그램목록(JSON), 현재상태, 최종수정일시, 컨트랙터ID, 배정일시
 
 **Sheet 2 "StatusHistory"**: CaseID, 타임스탬프, 이전상태, 새상태, 메모, 담당자 (append-only, row 삭제/수정 금지)
 
+**Sheet 3 "Contractors"**: 컨트랙터ID, 이름, 연락처, 액세스코드, 계약시작일, 계약서Drive링크, 건당단가, 활성여부, 생성일시, 최종수정일시
+
+**Sheet 4 "Payments"**: CaseID, 컨트랙터ID, 하청비지급액, 하청비지급일, 하청비지급상태(대기/완료), 정부정산수령액, 정부정산수령일, 정부정산수령상태(대기/완료)
+
 **Code.gs 함수**: `doPost(e)` 케이스 생성/상태갱신 분기, `doGet(e)` CaseID/전화번호 조회.
 상태 갱신 시 Cases 갱신 + StatusHistory append가 항상 같이 일어나야 함.
+
+## 4.1 admin.html 요구사항
+
+- 초기 버전은 단일 관리자 비밀번호로 로그인한다. 비밀번호는 프런트엔드에 보관하지 않고 Apps Script Script Properties에서 검증한다.
+- **업체 관리**: 이름, 연락처, 액세스코드, 계약시작일, 계약서 Drive 링크, 건당 단가, 활성 여부를 등록·수정·비활성화하고 업체별 배정/완료/평균 처리기간을 표시한다.
+- **일감 배정**: 미배정 Cases를 활성 업체에 배정하고, Cases 갱신과 함께 StatusHistory에 담당자=관리자, 새 상태=배정됨을 append한다.
+- **대시보드**: 대기/배정됨/시공중/시공완료/서류제출완료/정산완료 칸반 요약, 업체별 집계, 배정 후 지정 일수 이상 변동 없는 지연 건을 표시한다.
+- **정산**: 시공완료·미지급 건의 하청비를 지급 처리하며, 정부 정산 수령은 별도 필드로 독립 기록한다.
+- `Code.gs`는 `registerContractor`, `updateContractor`, `assignCaseToContractor`, `getUnassignedCases`, `getDashboardSummary`, `recordSubPayment`, `recordGovReimbursement` 동작을 API 분기로 제공한다.
 
 ## 5. 지켜야 할 것
 
 - FinCRM(tubasa22.github.io/Fincrm) 등 다른 저장소 파일은 건드리지 않는다 — 완전히 독립된 저장소.
 - 소득 등 민감정보는 Google Sheets에만, localStorage는 세션 임시값만.
 - 프로그램 기준(금액/소득기준)은 상단 CONFIG 객체로 분리.
+- 관리자 전용 단가·계약정보·Payments는 admin API 응답에서만 제공하며 컨트랙터 API에는 포함하지 않는다.
 - 모든 UI 텍스트는 한국어.
 
 ## 6. 현재 상태
 
 - [x] index.html 구현 완료: 다단계 인테이크, ZIP 추정 매핑, 순수 JS 매칭 룰 엔진, 결과·케이스 관리 화면
 - [x] apps-script/Code.gs 구현 완료: Cases/StatusHistory 자동 생성, 케이스 생성·조회·상태 변경 API
+- [x] 고객 화면(index.html): 고객 정보 수집과 인센티브 자격 매칭
+- [ ] 컨트랙터 화면(contractor.html): 배정 케이스 조회용 화면은 아직 추가되지 않음
+- [x] 관리자 화면(admin.html): 업체·배정·파이프라인·하청비/정부정산 관리
+- [x] 관리자 API: Contractors/Payments 시트와 관리자 인증, 업체 등록·배정·정산 API 구현
 
 ## 7. 다음 세션에서 할 일
 
 - ZIP-유틸리티 매핑, CALeVIP 지역별 금액표 등 실제 데이터 보강
 - Apps Script를 대상 Google Sheet에 바인딩하고 웹앱 URL을 index.html의 CONFIG.apiUrl에 설정
+- 계정 여러 개 지원 및 역할 기반 권한 관리
+- Google Drive API를 통한 계약서 링크/권한 실연동
+- contractor.html 추가 후 배정 케이스 노출 API 연동
 
 ## 8. 확인 필요 항목
 
 - 프로그램별 실제 금액·소득기준과 지역별 대상 여부는 공식 공고 기준으로 검증·갱신 필요
+- Apps Script Script Properties에 ADMIN_PASSWORD를 설정해야 관리자 로그인이 작동함
