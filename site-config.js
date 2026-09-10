@@ -2,7 +2,7 @@
 window.SITE_CONFIG = {
   contactEmail: 'jdlee.electric@gmail.com',
   images: {
-    hero: 'https://source.unsplash.com/800x600/?electric-car,home-charging',
-    about: 'https://source.unsplash.com/800x600/?family,korean'
+    hero: 'assets/clean-ev-hero.png',
+    about: 'assets/clean-ev-family.png'
   }
 };
