@@ -123,6 +123,7 @@ README.md            — 사람이 읽는 설명서
 
 - 컨트랙터 신원확인은 SMS OTP(자동, `FEATURES_SMS_ENABLED=true`일 때)와 CSLB 라이선스 수동확인(관리자)의 조합으로 운영한다.
 - OTP는 Contractors 시트에 5분 한정으로 저장하고 검증 성공 시 즉시 초기화한다. SMS 비활성 상태에서는 관리자 수동 전화 확인 대기로 계약서를 받을 수 있다.
+- `FEATURES_SMS_ENABLED` Script Property가 정확히 `true`일 때만 Twilio를 호출하며, 누락 또는 `false`면 OTP 단계를 건너뛰고 오류 없이 관리자 수동확인 대기 흐름으로 진행한다.
 - 계약서 제출은 라이선스·본드·전자서명·동의를 기록한다. SMS 사용 시 OTP 통과 후 10분 내 제출만 허용한다.
 - 배정에는 활성·미만료 라이선스/본드·본인확인 완료 상태가 모두 필요하다.
 - 모든 UI 텍스트는 한국어.
@@ -174,3 +175,4 @@ README.md            — 사람이 읽는 설명서
 - Apps Script Script Properties에 ADMIN_PASSWORD를 설정해야 관리자 로그인이 작동함
 - 보안 수정 완료, 배포 전 재점검 필요
 - CSLB는 공식 API가 없어 수동확인 방식 채택함, 추후 물량이 많아지면 유료 스크래핑 서비스(Apify 등) 검토 가능
+- FEATURES_SMS_ENABLED Script Property를 Google Sheets 편집기에서 `true`로 추가하고 진짜 Twilio 값을 넣으면 SMS 기능 활성화됨
