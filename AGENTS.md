@@ -76,14 +76,14 @@ README.md            — 사람이 읽는 설명서
 
 ## 6. 현재 상태
 
-- [ ] 초기 스캐폴드만 생성됨 (index.html, Code.gs 아직 비어있음)
+- [x] index.html 구현 완료: 다단계 인테이크, ZIP 추정 매핑, 순수 JS 매칭 룰 엔진, 결과·케이스 관리 화면
+- [x] apps-script/Code.gs 구현 완료: Cases/StatusHistory 자동 생성, 케이스 생성·조회·상태 변경 API
 
 ## 7. 다음 세션에서 할 일
 
-- index.html 실제 구현 (인테이크 폼 + 매칭 엔진 + 결과 화면 + 이력관리 화면)
-- apps-script/Code.gs 실제 구현
 - ZIP-유틸리티 매핑, CALeVIP 지역별 금액표 등 실제 데이터 보강
+- Apps Script를 대상 Google Sheet에 바인딩하고 웹앱 URL을 index.html의 CONFIG.apiUrl에 설정
 
 ## 8. 확인 필요 항목
 
-- (아직 없음)
+- 프로그램별 실제 금액·소득기준과 지역별 대상 여부는 공식 공고 기준으로 검증·갱신 필요

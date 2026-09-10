@@ -1,10 +1,11 @@
-// AGENTS.md 4번 항목 참고 - Codex가 구현 예정
-// doPost(e), doGet(e) 함수와 Cases / StatusHistory 시트 연동 로직이 여기 들어갑니다.
-
-function doGet(e) {
-  return ContentService.createTextOutput("EV incentive backend placeholder");
-}
-
-function doPost(e) {
-  return ContentService.createTextOutput("EV incentive backend placeholder");
-}
+/** Google Sheets에 바인딩된 Apps Script로 사용합니다. */
+var CASE_HEADERS=['CaseID','생성일시','담당자','신청자정보(JSON)','매칭프로그램목록(JSON)','현재상태','최종수정일시'];
+var HISTORY_HEADERS=['CaseID','타임스탬프','이전상태','새상태','메모','담당자'];
+function doGet(e){try{var q=String(e.parameter.query||e.parameter.caseId||e.parameter.phone||'').trim();if(!q)return output_({success:false,error:'CaseID 또는 전화번호가 필요합니다.'});return output_({success:true,cases:findCases_(q)});}catch(err){return output_({success:false,error:err.message});}}
+function doPost(e){try{var data=JSON.parse((e.postData&&e.postData.contents)||'{}');if(data.action==='createCase')return output_(createCase_(data));if(data.action==='updateStatus')return output_(updateStatus_(data));return output_({success:false,error:'지원하지 않는 요청입니다.'});}catch(err){return output_({success:false,error:err.message});}}
+function output_(data){return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);}
+function sheets_(){var ss=SpreadsheetApp.getActiveSpreadsheet(),cases=ss.getSheetByName('Cases'),history=ss.getSheetByName('StatusHistory');if(!cases){cases=ss.insertSheet('Cases');cases.appendRow(CASE_HEADERS);cases.setFrozenRows(1);}if(!history){history=ss.insertSheet('StatusHistory');history.appendRow(HISTORY_HEADERS);history.setFrozenRows(1);}return {cases:cases,history:history};}
+function createCase_(data){if(!data.applicant||!data.applicant.name||!data.applicant.phone)throw new Error('이름과 전화번호는 필수입니다.');var s=sheets_(),now=new Date(),id='EV-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+Math.floor(100+Math.random()*900);s.cases.appendRow([id,now,data.agent||'',JSON.stringify(data.applicant),JSON.stringify(data.programs||[]),'대기',now]);s.history.appendRow([id,now,'','대기','케이스 생성',data.agent||'']);return {success:true,caseId:id};}
+function updateStatus_(data){var allowed=['대기','서류접수','제출','승인','거절','정산완료'];if(!data.caseId||allowed.indexOf(data.newStatus)<0)throw new Error('유효한 CaseID와 새 상태가 필요합니다.');var s=sheets_(),v=s.cases.getDataRange().getValues(),row=-1;for(var i=1;i<v.length;i++)if(String(v[i][0])===String(data.caseId)){row=i+1;break;}if(row<0)throw new Error('케이스를 찾을 수 없습니다.');var old=v[row-1][5];if(old===data.newStatus)return {success:true,message:'동일한 상태입니다.'};s.cases.getRange(row,6,1,2).setValues([[data.newStatus,new Date()]]);s.history.appendRow([data.caseId,new Date(),old,data.newStatus,data.note||'',data.agent||'']);return {success:true};}
+function findCases_(query){var s=sheets_(),cases=s.cases.getDataRange().getValues(),hist=s.history.getDataRange().getValues(),needle=String(query).toLowerCase(),digits=needle.replace(/\D/g,''),out=[];for(var i=1;i<cases.length;i++){var a=json_(cases[i][3],{}),idMatches=String(cases[i][0]).toLowerCase().indexOf(needle)>=0,phoneMatches=digits&&String(a.phone||'').replace(/\D/g,'').indexOf(digits)>=0;if(!idMatches&&!phoneMatches)continue;var h=[];for(var j=1;j<hist.length;j++)if(String(hist[j][0])===String(cases[i][0]))h.push({timestamp:date_(hist[j][1]),previousStatus:hist[j][2],newStatus:hist[j][3],note:hist[j][4],agent:hist[j][5]});out.push({caseId:cases[i][0],createdAt:date_(cases[i][1]),agent:cases[i][2],applicant:a,programs:json_(cases[i][4],[]),status:cases[i][5],updatedAt:date_(cases[i][6]),history:h});}return out;}
+function json_(v,fallback){try{return JSON.parse(v);}catch(e){return fallback;}}function date_(v){return v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd HH:mm:ss'):String(v||'');}
