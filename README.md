@@ -52,7 +52,7 @@
 
 ## SMS 기능 켜는 방법
 
-기본값은 SMS 비활성입니다. Google Sheets에 연결된 Apps Script의 Script Properties에 `FEATURES_SMS_ENABLED`를 `true`로 추가하고, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`에 실제 Twilio 값을 설정하면 코드 변경 없이 SMS OTP 발송이 활성화됩니다. 해당 속성이 없거나 `false`이면 컨트랙터 계약서는 관리자 수동 전화 확인 대기 방식으로 정상 진행됩니다.
+기본값은 SMS 비활성입니다. Google Sheets에 연결된 Apps Script의 Script Properties에 `FEATURES_SMS_ENABLED`를 `true`로 추가하고, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`에 실제 Twilio 값을 설정하면 코드 변경 없이 SMS OTP 발송이 활성화됩니다. 해당 속성이 없거나 `false`이면 계약서 화면에서 등록된 이메일로 인증번호를 받거나, 관리자 수동 전화 확인을 선택할 수 있습니다. 이메일이 없는 직접 등록 업체는 전화 확인 경로만 사용할 수 있습니다.
 
 ## 프로그램 신청 중단·재개
 
@@ -72,5 +72,5 @@
 - [x] 광고 유입용 랜딩 페이지 및 서비스 소개 페이지
 - [x] 법적고지·개인정보처리방침 페이지
 - [x] 컨트랙터 로그인·배정 건 관리·계약서 제출 화면
-- [x] SMS OTP(선택 기능) 또는 관리자 전화 본인확인, CSLB 조회 링크 제공
+- [x] SMS OTP(선택 기능)·이메일 OTP·관리자 전화 본인확인, CSLB 조회 링크 제공
 - [x] 공개 협력업체 지원서 접수 및 관리자 승인·거절 검토

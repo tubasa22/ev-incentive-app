@@ -28,7 +28,7 @@ loadContractors=async function(){
   ['신원/라이선스 확인','계약 상태','본인확인'].forEach(x=>head.insertAdjacentHTML('beforeend','<th>'+x+'</th>'));
   [...$('#contractorRows').rows].forEach((row,i)=>{
     let c=contractors[i];if(!c)return;
-    let identityDone=['관리자수동확인완료','SMS인증'].indexOf(c.identityMethod)>=0;
+    let identityDone=['관리자수동확인완료','SMS인증','이메일인증'].indexOf(c.identityMethod)>=0;
     let licenseInfo='<div class="license-line"><small>면허: '+esc(c.licenseNumber||'미입력')+'</small><span>·</span><a target="_blank" href="https://www.cslb.ca.gov/OnlineServices/CheckLicenseII/CheckLicense.aspx">CSLB에서 확인</a></div>';
     let agreementCell=c.agreementAccepted ? '<span class="done-badge">계약 완료됨</span>' : '<span class="pending-badge">계약 대기중</span><button class="secondary resendInvite" data-id="'+esc(c.contractorId)+'">초대 메일 재발송</button>';
     let identityCell=identityDone ? '<span class="done-badge">완료됨</span>' : (c.identityMethod==='관리자수동확인대기'?'<button class="identityOk" data-id="'+esc(c.contractorId)+'">전화 확인</button>':'<span class="pending-badge">확인 필요</span>');
