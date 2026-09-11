@@ -75,6 +75,8 @@ README.md            — 사람이 읽는 설명서
 
 **Sheet 4 "Payments"**: CaseID, 컨트랙터ID, 하청비지급액, 하청비지급일, 하청비지급상태(대기/완료), 정부정산수령액, 정부정산수령일, 정부정산수령상태(대기/완료)
 
+**Sheet 5 "ContractorApplications"**: 지원ID, 지원일시, 업체명/이름, 연락처, 이메일, 서비스가능지역, 라이선스번호, 라이선스종류, 라이선스만료일, 본드회사명, 본드번호, 본드보장금액, 본드만료일, 경력/한줄소개, 지원상태, 검토일시, 검토메모, 컨트랙터ID
+
 **Code.gs 함수**: `doPost(e)` 케이스 생성/상태갱신 분기, `doGet(e)` CaseID/전화번호 조회.
 상태 갱신 시 Cases 갱신 + StatusHistory append가 항상 같이 일어나야 함.
 
@@ -132,6 +134,12 @@ README.md            — 사람이 읽는 설명서
 - 모든 앱 화면은 `site-config.js`의 `SITE_CONFIG.apiUrl`을 공통으로 사용해 Apps Script `doPost` 액션을 호출한다. 배포 URL이 설정되기 전에는 호출하지 않고 관리자 서버 설정 안내를 표시한다.
 - 네트워크 실패는 "서버에 연결할 수 없습니다. 인터넷 연결을 확인하거나 잠시 후 다시 시도해주세요"로, 서버 실패는 응답의 한국어 `error` 메시지로 표시한다.
 - `file://` 직접 열기는 CORS 제약으로 실패할 수 있으므로 GitHub Pages 등 웹서버 배포 상태에서 연결을 검증한다.
+
+## 5.4 협력업체 공개 지원·검토 규칙
+
+- `contractor-apply.html`은 로그인 없는 공개 지원서이며 `submitContractorApplication`만 인증 없이 호출한다.
+- 지원서는 동일 이메일 또는 전화번호의 24시간 내 중복 접수를 막고, 관리자는 지원 상태별 목록을 검토해 승인/거절한다.
+- 승인 시 기존 `registerContractor`를 재사용해 계약 미체결 업체를 생성하고, 액세스코드와 계약서 링크를 이메일로 전달한다. 메일 실패는 승인 자체를 취소하지 않는다.
 - 모든 UI 텍스트는 한국어.
 
 ## 6. 현재 상태
@@ -143,15 +151,16 @@ README.md            — 사람이 읽는 설명서
 | 공개 | landing.html | 소셜 광고 유입 및 무료 자격 확인 유도 |
 | 공개 | about.html | 서비스 취지·프로그램·운영자 정보 안내 |
 | 공개 | legal.html | 면책, 고객 무료 원칙, 개인정보처리방침 |
+| 공개 | contractor-apply.html | 로그인 없이 접수하는 협력업체 지원서 |
 | 공개 | index.html | 고객 인테이크 및 인센티브 예비 매칭 |
-| 앱 | contractor.html | 컨트랙터 배정 케이스 처리 화면 (추가 예정) |
+| 앱 | contractor.html | 컨트랙터 배정 케이스·계약 관리 화면 |
 | 앱 | admin.html | 운영자 업체·배정·파이프라인·정산 관리 |
 | 공통 | site-config.js | 공개 페이지 문의처 설정 |
 
 - [x] index.html 구현 완료: 다단계 인테이크, ZIP 추정 매핑, 순수 JS 매칭 룰 엔진, 결과·케이스 관리 화면
 - [x] apps-script/Code.gs 구현 완료: Cases/StatusHistory 자동 생성, 케이스 생성·조회·상태 변경 API
 - [x] 고객 화면(index.html): 고객 정보 수집과 인센티브 자격 매칭
-- [ ] 컨트랙터 화면(contractor.html): 배정 케이스 조회용 화면은 아직 추가되지 않음
+- [x] 컨트랙터 화면(contractor.html): 배정 케이스 조회 및 계약 관리 구현
 - [x] 관리자 화면(admin.html): 업체·배정·파이프라인·하청비/정부정산 관리
 - [x] 관리자 API: Contractors/Payments 시트와 관리자 인증, 업체 등록·배정·정산 API 구현
 - [x] 공개 페이지: 광고 랜딩, 서비스 소개, 법적고지/개인정보처리방침 및 공통 문의처 설정 구현
@@ -169,6 +178,11 @@ README.md            — 사람이 읽는 설명서
   - [x] admin.html: 로그인·업체·케이스·배정·대시보드·정산·라이선스/수동확인 액션
   - [x] contractor.html: 로그인·내 배정 건·상태 변경·계약 상태 액션
   - [x] contract.html: OTP·계약서 제출 액션
+- [x] 협력업체 공개 지원·검토 흐름
+  - [x] `contractor-apply.html` 생성: 공개 지원서 및 `submitContractorApplication` 연결
+  - [x] `ContractorApplications` 시트 자동 생성 및 24시간 중복 지원 방지
+  - [x] `getContractorApplications`·`reviewContractorApplication` 관리자 액션 및 승인/거절 화면
+  - [x] 승인 시 업체 생성, 계약서 링크·액세스코드 이메일 발송(실패 시 코드 직접 안내)
 
 ## 7. 다음 세션에서 할 일
 
