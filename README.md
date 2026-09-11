@@ -18,10 +18,20 @@
 
 1. 이 저장소를 GitHub Pages로 배포 (Settings → Pages → main 브랜치 선택)
 2. `apps-script/Code.gs` 내용을 Google Apps Script 프로젝트에 붙여넣고 웹앱으로 배포
-3. 배포된 Apps Script URL을 `index.html` 및 `admin.html` 상단 `CONFIG.apiUrl`에 입력
+3. 배포된 Apps Script URL을 `site-config.js`의 `apiUrl`에 입력
 4. Apps Script 프로젝트의 Script Properties에 관리자 비밀번호를 `ADMIN_PASSWORD` 키로 설정
 5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
 6. SMS OTP를 사용할 경우 Apps Script Script Properties에 `FEATURES_SMS_ENABLED=true`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`을 설정
+
+## 배포 후 연결 테스트 체크리스트
+
+1. `site-config.js`의 `apiUrl`을 실제 배포된 Apps Script 웹앱 URL로 교체합니다.
+2. `admin.html`에서 관리자 비밀번호로 로그인해 성공 여부를 확인합니다.
+3. 관리자 화면에서 테스트 업체 1개를 등록하고 Google Sheets `Contractors` 시트에 행이 생기는지 확인합니다.
+4. `index.html`에서 테스트 신청서 1개를 제출하고 `Cases` 시트에 행이 생기는지 확인합니다.
+5. 등록한 업체의 계약서 링크로 `contract.html`을 열어 작성한 뒤, `Contractors` 시트에 라이선스·본드 정보가 채워지는지 확인합니다.
+
+`file://`로 직접 열면 브라우저 CORS 정책으로 호출이 실패할 수 있으므로 GitHub Pages 등 실제 웹서버로 배포한 상태에서 테스트하세요.
 
 ## 광고 유입 페이지
 
