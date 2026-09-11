@@ -45,6 +45,10 @@
 
 기본값은 SMS 비활성입니다. Google Sheets에 연결된 Apps Script의 Script Properties에 `FEATURES_SMS_ENABLED`를 `true`로 추가하고, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`에 실제 Twilio 값을 설정하면 코드 변경 없이 SMS OTP 발송이 활성화됩니다. 해당 속성이 없거나 `false`이면 컨트랙터 계약서는 관리자 수동 전화 확인 대기 방식으로 정상 진행됩니다.
 
+## 프로그램 신청 중단·재개
+
+`/admin.html`에 로그인한 뒤 **프로그램 관리** 탭에서 RYR, CC4A, DCAP, MyFirstEV, CALeVIP, 유틸리티리베이트의 토글을 변경하고 메모를 입력한 뒤 저장합니다. 비활성 프로그램은 새 고객 케이스의 관리자용 매칭 결과에 **현재 신청 일시중단**으로 남아, 고객에게 잘못된 신청 가능 안내가 전달되지 않도록 합니다.
+
 ## 기능 목록
 
 - [x] 다단계 인테이크 폼
