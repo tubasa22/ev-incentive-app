@@ -123,7 +123,7 @@ README.md            — 사람이 읽는 설명서
 
 ## 5.2 컨트랙터 계약·신원확인 규칙
 
-- 컨트랙터 신원확인은 SMS OTP(자동, `FEATURES_SMS_ENABLED=true`일 때)와 CSLB 라이선스 수동확인(관리자)의 조합으로 운영한다.
+- 컨트랙터 신원확인은 SMS OTP(자동, `FEATURES_SMS_ENABLED=true`일 때) 또는 관리자 수동 전화 확인으로 운영한다. CSLB는 관리자용 조회 링크로 참고한다.
 - OTP는 Contractors 시트에 5분 한정으로 저장하고 검증 성공 시 즉시 초기화한다. SMS 비활성 상태에서는 관리자 수동 전화 확인 대기로 계약서를 받을 수 있다.
 - `FEATURES_SMS_ENABLED` Script Property가 정확히 `true`일 때만 Twilio를 호출하며, 누락 또는 `false`면 OTP 단계를 건너뛰고 오류 없이 관리자 수동확인 대기 흐름으로 진행한다.
 - 계약서 제출은 라이선스·본드·전자서명·동의를 기록한다. SMS 사용 시 OTP 통과 후 10분 내 제출만 허용한다.
@@ -189,7 +189,7 @@ README.md            — 사람이 읽는 설명서
 - [x] B. 컨트랙터 로그인, 배정 케이스, OTP, 계약서, 수동확인 Apps Script 함수 추가
 - [x] C. contractor.html 생성됨: 로그인, 배정 건 상태 변경, 계약 관리
 - [x] D. contract.html 생성됨: 재인증, OTP 게이트, 계약서·전자서명 제출
-- [x] E. admin.html 업체 목록: CSLB 링크·라이선스 복사·수동확인 동작 추가
+- [x] E. admin.html 업체 목록: CSLB 링크 및 본인확인 동작 제공
 - [x] 프론트-백엔드 연결 전수 점검 완료
   - [x] index.html: `createCase`
   - [x] admin.html: 로그인·업체·케이스·배정·대시보드·정산·라이선스/수동확인 액션
@@ -205,6 +205,8 @@ README.md            — 사람이 읽는 설명서
   - [x] `getContractorApplications`·`reviewContractorApplication` 관리자 액션 및 승인/거절 화면
   - [x] 승인 시 업체 생성, 계약서 링크·액세스코드 이메일 발송(실패 시 코드 직접 안내)
   - [x] 관리자 업체 관리 화면의 계약서 안내 메일 재발송: 미계약 업체만 발송하고, 완료 업체는 계약 완료 상태로 표시
+- [x] 라이선스 수동확인 UI 제거: CSLB 조회 링크만 제공하며 배정은 미만료 라이선스·본드와 본인확인 완료 상태로 판단
+- [x] 날짜 전용 필드 표시: 계약시작일·라이선스만료일·본드만료일은 dateOnly_()로 시간 없이 표시
 
 ## 7. 다음 세션에서 할 일
 
