@@ -183,6 +183,7 @@ README.md            — 사람이 읽는 설명서
   - [x] `ContractorApplications` 시트 자동 생성 및 24시간 중복 지원 방지
   - [x] `getContractorApplications`·`reviewContractorApplication` 관리자 액션 및 승인/거절 화면
   - [x] 승인 시 업체 생성, 계약서 링크·액세스코드 이메일 발송(실패 시 코드 직접 안내)
+  - [x] 관리자 업체 관리 화면의 계약서 안내 메일 재발송: 미계약 업체만 발송하고, 완료 업체는 계약 완료 상태로 표시
 
 ## 7. 다음 세션에서 할 일
 
