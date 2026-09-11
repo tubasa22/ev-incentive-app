@@ -95,7 +95,7 @@ README.md            — 사람이 읽는 설명서
 - **landing.html**: 모바일 우선 광고 유입 페이지로, 무료 자격 확인 CTA(index.html), 혜택 요약, 민간 신청 지원 서비스 고지, 소개/법적고지 링크를 제공한다. 확정 지원금 광고 문구는 사용하지 않는다.
 - **about.html**: 서비스의 정보 격차 해소 취지, 대상 프로그램, 민간 신청 대행·시공 연결 역할, 운영자/라이선스/연락처를 안내한다.
 - **legal.html**: 비공식 관계·예비 판정·운영 조건 변경·비자문 면책, 고객 무료 원칙, 개인정보 수집·Google Sheets 보관·비판매·SSN 미수집·삭제 요청 절차를 고지한다.
-- 모든 공개 페이지의 문의 이메일은 `site-config.js`의 `SITE_CONFIG.contactEmail`을 사용하며, 값은 `jdlee.electric@gmail.com`으로 통일한다.
+- 모든 공개 페이지의 문의 이메일은 `site-config.js`의 `SITE_CONFIG.contactEmail`을 사용하며, 값은 `jdlee.elctric@gmail.com`으로 통일한다.
 
 ## 4.3 디자인 토큰
 
@@ -207,6 +207,8 @@ README.md            — 사람이 읽는 설명서
   - [x] 관리자 업체 관리 화면의 계약서 안내 메일 재발송: 미계약 업체만 발송하고, 완료 업체는 계약 완료 상태로 표시
 - [x] 라이선스 수동확인 UI 제거: CSLB 조회 링크만 제공하며 배정은 미만료 라이선스·본드와 본인확인 완료 상태로 판단
 - [x] 날짜 전용 필드 표시: 계약시작일·라이선스만료일·본드만료일은 dateOnly_()로 시간 없이 표시
+- [x] about.html 운영자 정보: 클린EV 전기 C-10 라이선스(1059763, CSLB)만 표시하며 보험 라이선스는 미표시
+- [x] 연락처 이메일 정정: `jdlee.elctric@gmail.com` (electric 아님, elctric)
 
 ## 7. 다음 세션에서 할 일
 
@@ -215,7 +217,7 @@ README.md            — 사람이 읽는 설명서
 - 계정 여러 개 지원 및 역할 기반 권한 관리
 - Google Drive API를 통한 계약서 링크/권한 실연동
 - contractor.html 추가 후 배정 케이스 노출 API 연동
-- 운영자 이름과 CA 보험업 라이선스 번호 확정 후 about.html에 반영
+- C-10 전기 라이선스 정보가 변경되면 about.html 운영자 정보에 반영
 - 대표님 실제 촬영 사진 확보 후 `site-config.js`의 `SITE_CONFIG.images` URL 교체
 
 ## 8. 확인 필요 항목
