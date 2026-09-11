@@ -22,6 +22,15 @@
 4. Apps Script 프로젝트의 Script Properties에 관리자 비밀번호를 `ADMIN_PASSWORD` 키로 설정
 5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
 6. SMS OTP를 사용할 경우 Apps Script Script Properties에 `FEATURES_SMS_ENABLED=true`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`을 설정
+## 고객 접수확인 이메일 트리거 설정
+
+고객 신청 화면의 제출 속도를 유지하기 위해, 접수확인 이메일은 케이스 저장 직후가 아니라 Apps Script 시간 기반 트리거가 별도로 발송합니다. 트리거를 등록하지 않으면 Cases 시트의 `확인메일발송상태`가 `대기`로 남고 메일은 발송되지 않습니다.
+
+1. Google Sheets에 연결된 Apps Script 편집기에서 왼쪽 **트리거** 메뉴를 엽니다.
+2. 오른쪽 아래 **트리거 추가**를 선택합니다.
+3. 실행할 함수로 `processPendingConfirmationEmails`를 선택합니다.
+4. 이벤트 소스는 **시간 기반**, 유형은 **분 단위 타이머**, 간격은 **1분마다**를 선택합니다.
+5. 저장 후 권한 요청을 승인합니다.
 
 ## 배포 후 연결 테스트 체크리스트
 

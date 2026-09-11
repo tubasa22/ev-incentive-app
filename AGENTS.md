@@ -67,7 +67,7 @@ README.md            — 사람이 읽는 설명서
 
 ## 4. Google Sheets 데이터 구조
 
-**Sheet 1 "Cases"**: CaseID, 생성일시, 담당자, 신청자정보(JSON), 매칭프로그램목록(JSON), 연락선호방법, 매칭결과JSON, 현재상태, 최종수정일시, 컨트랙터ID, 배정일시
+**Sheet 1 "Cases"**: CaseID, 생성일시, 담당자, 신청자정보(JSON), 매칭프로그램목록(JSON), 연락선호방법, 매칭결과JSON, 현재상태, 최종수정일시, 컨트랙터ID, 배정일시, 확인메일발송상태(대기/완료/실패)
 
 **Sheet 2 "StatusHistory"**: CaseID, 타임스탬프, 이전상태, 새상태, 메모, 담당자 (append-only, row 삭제/수정 금지)
 
@@ -211,6 +211,7 @@ README.md            — 사람이 읽는 설명서
 - [x] 연락처 이메일 정정: `jdlee.elctric@gmail.com` (electric 아님, elctric)
 - [x] 고객 접수확인 이메일 HTML화: 절차 카드·접수번호·일반 프로그램 소개를 제공하고 일반 텍스트 폴백에는 실제 줄바꿈을 사용
 - [x] 고객 접수확인 이메일: 생성 로고·가정 충전 EV 이미지를 사용하고, 읽기 폭과 줄바꿈을 메일 클라이언트에 맞게 정리
+- [x] 확인메일 비동기 처리: `createCase_`는 확인메일발송상태를 대기로 저장 후 즉시 응답하며, `processPendingConfirmationEmails` 1분 트리거가 메일을 발송한다. Apps Script에서 트리거 등록이 필요하다.
 
 ## 7. 다음 세션에서 할 일
 
