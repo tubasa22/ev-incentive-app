@@ -212,7 +212,7 @@ README.md            — 사람이 읽는 설명서
 - [x] 고객 접수확인 이메일 HTML화: 절차 카드·접수번호·일반 프로그램 소개를 제공하고 일반 텍스트 폴백에는 실제 줄바꿈을 사용
 - [x] 고객 접수확인 이메일: 생성 로고·가정 충전 EV 이미지를 사용하고, 읽기 폭과 줄바꿈을 메일 클라이언트에 맞게 정리
 - [x] 확인메일 비동기 처리: `createCase_`는 확인메일발송상태를 대기로 저장 후 즉시 응답하며, `processPendingConfirmationEmails` 1분 트리거가 메일을 발송한다. Apps Script에서 트리거 등록이 필요하다.
-- [x] 공개 페이지 헤더 로고: landing.html·about.html·legal.html·index.html·contractor-apply.html에 `assets/clean-ev-email-logo.png`와 텍스트 폴백을 적용
+- [x] 공개 페이지 헤더 로고: `assets/logo-icon.svg`의 SVG 아이콘과 “클린EV” 텍스트를 조합해 사용한다. 밝은 헤더는 딥 그린, 어두운 헤더는 `.header-dark` 클래스로 베이지색(`#F7F6F1`)으로 전환한다. `clean-ev-email-logo.png`는 이메일 전용으로 유지한다.
 
 ## 7. 다음 세션에서 할 일
 
