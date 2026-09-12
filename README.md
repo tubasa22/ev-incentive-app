@@ -19,7 +19,7 @@
 1. 이 저장소를 GitHub Pages로 배포 (Settings → Pages → main 브랜치 선택)
 2. `apps-script/Code.gs` 내용을 Google Apps Script 프로젝트에 붙여넣고 웹앱으로 배포
 3. 배포된 Apps Script URL을 `site-config.js`의 `apiUrl`에 입력
-4. Apps Script 프로젝트의 Script Properties에 관리자 비밀번호를 `ADMIN_PASSWORD` 키로 설정
+4. Apps Script 프로젝트의 Script Properties에 비상 백업용 마스터 비밀번호를 `ADMIN_PASSWORD` 키로 설정합니다. 최초 실행 시 이 값으로 `Admins` 시트에 `ADM-001` 대표님 계정이 자동 생성되며, 이후 관리자는 개별 ID와 비밀번호로 로그인할 수 있습니다.
 5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
 6. SMS OTP를 사용할 경우 Apps Script Script Properties에 `FEATURES_SMS_ENABLED=true`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`을 설정
 ## 고객 접수확인 이메일 트리거 설정
@@ -65,6 +65,7 @@
 - [x] 케이스 저장 (Google Sheets)
 - [x] 케이스 상태 이력 관리
 - [x] 관리자 비밀번호 로그인
+- [x] 관리자 다중 계정 로그인·계정 관리 및 기존 마스터 비밀번호 백업 로그인
 - [x] 업체(컨트랙터) 등록·수정·비활성화 및 실적 요약
 - [x] 미배정 케이스의 업체 배정 및 상태 이력 기록
 - [x] 전체 파이프라인·지연 케이스 대시보드
