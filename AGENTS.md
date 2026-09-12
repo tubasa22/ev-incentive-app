@@ -71,7 +71,7 @@ README.md            — 사람이 읽는 설명서
 
 **Sheet 2 "StatusHistory"**: CaseID, 타임스탬프, 이전상태, 새상태, 메모, 담당자 (append-only, row 삭제/수정 금지)
 
-**Sheet 3 "Contractors"**: 컨트랙터ID, 이름, 연락처, 액세스코드, 계약시작일, 계약서Drive링크, 건당단가, 활성여부, 생성일시, 최종수정일시
+**Sheet 3 "Contractors"**: 컨트랙터ID, 이름, 연락처, 액세스코드, 계약시작일, 계약서Drive링크, 라이선스사본링크, 본드사본링크, 사업자증빙링크, 건당단가, 활성여부, 생성일시, 최종수정일시
 
 **Sheet 4 "Payments"**: CaseID, 컨트랙터ID, 하청비지급액, 하청비지급일, 하청비지급상태(대기/완료), 정부정산수령액, 정부정산수령일, 정부정산수령상태(대기/완료)
 
@@ -127,6 +127,8 @@ README.md            — 사람이 읽는 설명서
 - OTP는 Contractors 시트에 5분 한정으로 저장하고 검증 성공 시 즉시 초기화한다. SMS 비활성 상태에서는 관리자 수동 전화 확인 대기로 계약서를 받을 수 있다.
 - `FEATURES_SMS_ENABLED` Script Property가 정확히 `true`일 때만 Twilio를 호출하며, 누락 또는 `false`면 OTP 단계를 건너뛰고 오류 없이 관리자 수동확인 대기 흐름으로 진행한다.
 - 계약서 제출은 라이선스·본드·전자서명·동의를 기록한다. SMS 사용 시 OTP 통과 후 10분 내 제출만 허용한다.
+- 계약서 제출 시 라이선스 사본·본드 사본·사업자 증빙을 선택적으로 받아 `DRIVE_FOLDER_ID`가 가리키는 Google Drive 폴더에 저장하고, 파일 링크를 Contractors 시트에 기록한다. 10MB 초과 파일이나 개별 업로드 실패는 다른 파일 및 계약 저장을 막지 않는다.
+- 계약서 제출 완료 후 제출 서류 여부와 개별 업로드 오류를 포함한 관리자 알림 이메일을 발송하며, 이메일 실패는 계약 저장 성공에 영향을 주지 않는다.
 - 배정에는 활성·미만료 라이선스/본드·본인확인 완료 상태가 모두 필요하다.
 
 ## 5.3 프론트-백엔드 연결 규칙
@@ -216,13 +218,15 @@ README.md            — 사람이 읽는 설명서
 - [x] 고객 접수확인 이메일: 생성 로고·가정 충전 EV 이미지를 사용하고, 읽기 폭과 줄바꿈을 메일 클라이언트에 맞게 정리
 - [x] 확인메일 비동기 처리: `createCase_`는 확인메일발송상태를 대기로 저장 후 즉시 응답하며, `processPendingConfirmationEmails` 1분 트리거가 메일을 발송한다. Apps Script에서 트리거 등록이 필요하다.
 - [x] 공개 페이지 헤더 로고: `assets/logo-icon.svg`의 SVG 아이콘과 “클린EV” 텍스트를 조합해 사용한다. 밝은 헤더는 딥 그린, 어두운 헤더는 `.header-dark` 클래스로 베이지색(`#F7F6F1`)으로 전환한다. `clean-ev-email-logo.png`는 이메일 전용으로 유지한다.
+- [x] 컨트랙터 계약서 제출 서류: 라이선스·본드·사업자 증빙 파일을 Drive에 저장하고 관리자 업체 정보에 링크 표시
+- [x] 컨트랙터 계약서 제출 완료 시 관리자에게 알림 메일 발송 (제출 서류 첨부 여부 포함)
 
 ## 7. 다음 세션에서 할 일
 
 - ZIP-유틸리티 매핑, CALeVIP 지역별 금액표 등 실제 데이터 보강
 - Apps Script를 대상 Google Sheet에 바인딩하고 웹앱 URL을 index.html의 CONFIG.apiUrl에 설정
 - 계정 여러 개 지원 및 역할 기반 권한 관리
-- Google Drive API를 통한 계약서 링크/권한 실연동
+- Apps Script 편집기에서 Drive 접근 권한 승인 후 실제 파일 업로드·공유 링크·관리자 알림 메일 통합 테스트
 - contractor.html 추가 후 배정 케이스 노출 API 연동
 - C-10 전기 라이선스 정보가 변경되면 about.html 운영자 정보에 반영
 - 대표님 실제 촬영 사진 확보 후 `site-config.js`의 `SITE_CONFIG.images` URL 교체
@@ -234,3 +238,4 @@ README.md            — 사람이 읽는 설명서
 - 보안 수정 완료, 배포 전 재점검 필요
 - CSLB는 공식 API가 없어 수동확인 방식 채택함, 추후 물량이 많아지면 유료 스크래핑 서비스(Apify 등) 검토 가능
 - FEATURES_SMS_ENABLED Script Property를 Google Sheets 편집기에서 `true`로 추가하고 진짜 Twilio 값을 넣으면 SMS 기능 활성화됨
+- DRIVE_FOLDER_ID Script Property가 자동 생성되며, 처음 실행 시 Drive 접근 권한 팝업이 뜰 수 있음(테스트 함수를 편집기에서 한 번 직접 실행해 권한 승인 필요 — 이메일 권한 승인했던 것과 동일한 방식)
