@@ -176,60 +176,28 @@ README.md            — 사람이 읽는 설명서
 | 앱 | admin.html | 운영자 업체·배정·파이프라인·정산 관리 |
 | 공통 | site-config.js | 공개 페이지 문의처 설정 |
 
-- [x] index.html 구현 완료: 다단계 인테이크, ZIP 추정 매핑, 순수 JS 매칭 룰 엔진, 결과·케이스 관리 화면
-- [x] apps-script/Code.gs 구현 완료: Cases/StatusHistory 자동 생성, 케이스 생성·조회·상태 변경 API
-- [x] 고객 화면(index.html): 고객 정보 수집과 인센티브 자격 매칭
-- [x] 컨트랙터 화면(contractor.html): 배정 케이스 조회 및 계약 관리 구현
-- [x] 관리자 화면(admin.html): 업체·배정·파이프라인·하청비/정부정산 관리
-- [x] 관리자 API: Contractors/Payments 시트와 관리자 인증, 업체 등록·배정·정산 API 구현
-- [x] 정산 대상 판정: 시공완료 이후 모든 상태(서류제출완료·정산완료 포함) 중 하청비지급상태가 완료가 아닌 케이스를 표시
-- [x] 공개 페이지: 광고 랜딩, 서비스 소개, 법적고지/개인정보처리방침 및 공통 문의처 설정 구현
-- [x] 클린EV 공개 페이지 디자인: 고정 팔레트·Pretendard·생성 이미지·모바일 우선 레이아웃 적용
-- [x] 클린EV 이미지 자산: 생성한 가정 충전 EV·가족 사진을 `assets/`에 적용
-- [x] 자격 확인 플로우: 고객은 정보·연락 선호 방법만 제출하고, 매칭 결과는 Cases에 저장하여 관리자만 검토 후 연락
-- [x] Apps Script 보안 수정: 관리자 조회 인증, 상태 변경 권한 검증, 컨트랙터 축소 조회, Sheets 쓰기 잠금 적용
-- [x] A. Contractors 시트 계약·라이선스·본드·OTP·수동확인 컬럼 확장
-- [x] B. 컨트랙터 로그인, 배정 케이스, OTP, 계약서, 수동확인 Apps Script 함수 추가
-- [x] C. contractor.html 생성됨: 로그인, 배정 건 상태 변경, 계약 관리
-- [x] D. contract.html 생성됨: 재인증, OTP 게이트, 계약서·전자서명 제출
-- [x] E. admin.html 업체 목록: CSLB 링크 및 본인확인 동작 제공
-- [x] 컨트랙터 이메일 OTP: SMS 비활성 시 이메일 인증 또는 관리자 전화 확인을 선택할 수 있고, `이메일인증`도 배정 가능한 본인확인 완료 상태로 처리
-- [x] 협력업체 지원서 접수 알림: 제출 성공 시 지원자 접수 확인과 관리자 신규 지원 알림 메일을 각각 독립적으로 발송
-- [x] 프론트-백엔드 연결 전수 점검 완료
-  - [x] index.html: `createCase`
-  - [x] admin.html: 로그인·업체·케이스·배정·대시보드·정산·라이선스/수동확인 액션
-  - [x] contractor.html: 로그인·내 배정 건·상태 변경·계약 상태 액션
-  - [x] contract.html: OTP·계약서 제출 액션
-- [x] 프로그램 운영 상태 관리: `ProgramStatus` 시트 자동 초기화, 공개 상태 조회, 관리자 토글 및 매칭 결과 일시중단 표시
-- [x] 관리자 업체 관리 레이아웃: 고정 열 폭·긴 문자열 줄바꿈·가로 스크롤·모바일 축소 레이아웃 및 디자인 토큰 적용
-- [x] 고객 처리기간 안내: 랜딩 절차와 접수 확인 이메일에서 1차 검토와 운영기관 심사를 구분해 안내
-- [x] index.html의 케이스 관리 탭 제거됨: 고객 조회를 없애고 케이스 조회는 관리자 전용으로 일원화
-- [x] 협력업체 공개 지원·검토 흐름
-  - [x] `contractor-apply.html` 생성: 공개 지원서 및 `submitContractorApplication` 연결
-  - [x] `ContractorApplications` 시트 자동 생성 및 24시간 중복 지원 방지
-  - [x] `getContractorApplications`·`reviewContractorApplication` 관리자 액션 및 승인/거절 화면
-  - [x] 승인 시 업체 생성, 계약서 링크·액세스코드 이메일 발송(실패 시 코드 직접 안내)
-  - [x] 관리자 업체 관리 화면의 계약서 안내 메일 재발송: 미계약 업체만 발송하고, 완료 업체는 계약 완료 상태로 표시
-- [x] 라이선스 수동확인 UI 제거: CSLB 조회 링크만 제공하며 배정은 미만료 라이선스·본드와 본인확인 완료 상태로 판단
-- [x] 날짜 전용 필드 표시: 계약시작일·라이선스만료일·본드만료일은 dateOnly_()로 시간 없이 표시
-- [x] about.html 운영자 정보: 클린EV 전기 C-10 라이선스(1059763, CSLB)만 표시하며 보험 라이선스는 미표시
-- [x] 연락처 이메일은 `jdlee.electric@gmail.com`이 정확한 주소임 (`electric`에서 두 번째 `e`가 누락된 이전 주소는 잘못된 수정이었음, 재발 방지)
-- [x] 고객 접수확인 이메일 HTML화: 절차 카드·접수번호·일반 프로그램 소개를 제공하고 일반 텍스트 폴백에는 실제 줄바꿈을 사용
-- [x] 고객 접수확인 이메일: 생성 로고·가정 충전 EV 이미지를 사용하고, 읽기 폭과 줄바꿈을 메일 클라이언트에 맞게 정리
-- [x] 확인메일 비동기 처리: `createCase_`는 확인메일발송상태를 대기로 저장 후 즉시 응답하며, `processPendingConfirmationEmails` 1분 트리거가 메일을 발송한다. Apps Script에서 트리거 등록이 필요하다.
-- [x] 공개 페이지 헤더 로고: `assets/logo-icon.svg`의 SVG 아이콘과 “클린EV” 텍스트를 조합해 사용한다. 밝은 헤더는 딥 그린, 어두운 헤더는 `.header-dark` 클래스로 베이지색(`#F7F6F1`)으로 전환한다. `clean-ev-email-logo.png`는 이메일 전용으로 유지한다.
-- [x] 컨트랙터 계약서 제출 서류: 라이선스·본드·사업자 증빙 파일을 Drive에 저장하고 관리자 업체 정보에 링크 표시
-- [x] 컨트랙터 계약서 제출 완료 시 관리자에게 알림 메일 발송 (제출 서류 첨부 여부 포함)
+### 완료된 것 (검증 완료)
+
+- 고객 신청서(`index.html`)와 컨트랙터 지원~계약 전체 파이프라인: `contractor-apply.html` → 관리자 승인 → 이메일 초대 → OTP/이메일/관리자 수동 본인확인 → `contract.html` 라이선스·본드 정보 및 Drive 서류 업로드 → `contractor.html` 포털
+- 관리자 패널(`admin.html`): 업체 관리, 일감 배정, 프로그램 온·오프 토글, 정산 관리(하청비 지급/정부 정산 수령 독립 추적)
+- 케이스 전체 라이프사이클 실제 테스트 완료: 고객 제출 → 관리자 배정 → 컨트랙터 상태 변경(배정됨~시공완료) → 관리자 하청비 지급 처리
+- 지원 접수·승인·계약 완료 각 단계별 지원자·관리자 알림 이메일
+- 공개 페이지(`landing.html`, `about.html`, `legal.html`) 로고·헤더 디자인 통일
+- 연락처 이메일 확정: `jdlee.electric@gmail.com`
+
+### 아직 안 된 것 (다음 세션 우선순위)
+
+1. 관리자 계정 다중화 (현재 비밀번호 하나 공유 구조)
+2. `landing.html`에 UTM 광고 유입 추적 파라미터 캡처
+3. 견적/결제 플로우 전체 미착수 (`eligibility-check.html`, `consent-payment.html`, Stripe Payment Link 연동) — 이전 세션에서 설계만 논의했고 실제 구현은 시작하지 않음
+4. `about.html`에 라이선스번호(1059763, C-10, CSLB) 반영 여부 최종 화면 확인 필요
 
 ## 7. 다음 세션에서 할 일
 
-- ZIP-유틸리티 매핑, CALeVIP 지역별 금액표 등 실제 데이터 보강
-- Apps Script를 대상 Google Sheet에 바인딩하고 웹앱 URL을 index.html의 CONFIG.apiUrl에 설정
-- 계정 여러 개 지원 및 역할 기반 권한 관리
-- Apps Script 편집기에서 Drive 접근 권한 승인 후 실제 파일 업로드·공유 링크·관리자 알림 메일 통합 테스트
-- contractor.html 추가 후 배정 케이스 노출 API 연동
-- C-10 전기 라이선스 정보가 변경되면 about.html 운영자 정보에 반영
-- 대표님 실제 촬영 사진 확보 후 `site-config.js`의 `SITE_CONFIG.images` URL 교체
+1. 관리자 계정 다중화 (현재 비밀번호 하나 공유 구조)
+2. `landing.html`에 UTM 광고 유입 추적 파라미터 캡처
+3. 견적/결제 플로우 구현 (`eligibility-check.html`, `consent-payment.html`, Stripe Payment Link 연동)
+4. `about.html`의 라이선스번호(1059763, C-10, CSLB) 최종 화면 확인
 
 ## 8. 확인 필요 항목
 
