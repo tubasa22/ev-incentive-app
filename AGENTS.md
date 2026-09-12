@@ -95,7 +95,7 @@ README.md            — 사람이 읽는 설명서
 - **landing.html**: 모바일 우선 광고 유입 페이지로, 무료 자격 확인 CTA(index.html), 혜택 요약, 민간 신청 지원 서비스 고지, 소개/법적고지 링크를 제공한다. 확정 지원금 광고 문구는 사용하지 않는다.
 - **about.html**: 서비스의 정보 격차 해소 취지, 대상 프로그램, 민간 신청 대행·시공 연결 역할, 운영자/라이선스/연락처를 안내한다.
 - **legal.html**: 비공식 관계·예비 판정·운영 조건 변경·비자문 면책, 고객 무료 원칙, 개인정보 수집·Google Sheets 보관·비판매·SSN 미수집·삭제 요청 절차를 고지한다.
-- 모든 공개 페이지의 문의 이메일은 `site-config.js`의 `SITE_CONFIG.contactEmail`을 사용하며, 값은 `jdlee.elctric@gmail.com`으로 통일한다.
+- 모든 공개 페이지의 문의 이메일은 `site-config.js`의 `SITE_CONFIG.contactEmail`을 사용하며, 값은 `jdlee.electric@gmail.com`으로 통일한다.
 
 ## 4.3 디자인 토큰
 
@@ -213,7 +213,7 @@ README.md            — 사람이 읽는 설명서
 - [x] 라이선스 수동확인 UI 제거: CSLB 조회 링크만 제공하며 배정은 미만료 라이선스·본드와 본인확인 완료 상태로 판단
 - [x] 날짜 전용 필드 표시: 계약시작일·라이선스만료일·본드만료일은 dateOnly_()로 시간 없이 표시
 - [x] about.html 운영자 정보: 클린EV 전기 C-10 라이선스(1059763, CSLB)만 표시하며 보험 라이선스는 미표시
-- [x] 연락처 이메일 정정: `jdlee.elctric@gmail.com` (electric 아님, elctric)
+- [x] 연락처 이메일은 `jdlee.electric@gmail.com`이 정확한 주소임 (`electric`에서 두 번째 `e`가 누락된 이전 주소는 잘못된 수정이었음, 재발 방지)
 - [x] 고객 접수확인 이메일 HTML화: 절차 카드·접수번호·일반 프로그램 소개를 제공하고 일반 텍스트 폴백에는 실제 줄바꿈을 사용
 - [x] 고객 접수확인 이메일: 생성 로고·가정 충전 EV 이미지를 사용하고, 읽기 폭과 줄바꿈을 메일 클라이언트에 맞게 정리
 - [x] 확인메일 비동기 처리: `createCase_`는 확인메일발송상태를 대기로 저장 후 즉시 응답하며, `processPendingConfirmationEmails` 1분 트리거가 메일을 발송한다. Apps Script에서 트리거 등록이 필요하다.
