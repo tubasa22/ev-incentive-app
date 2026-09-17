@@ -9,6 +9,10 @@ window.SITE_CONFIG = {
     withCharger: 199,
     creditNote: '충전기 시공을 진행하시면 이 이용료는 시공비에서 차감됩니다.'
   },
+  stripe: {
+    paymentLinkVehicleOnly: 'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE',
+    paymentLinkWithCharger: 'PASTE_STRIPE_LINK_WITH_CHARGER_HERE'
+  },
   images: {
     hero: 'assets/clean-ev-hero.png',
     about: 'assets/clean-ev-family.png'

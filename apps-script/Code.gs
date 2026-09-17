@@ -11,10 +11,12 @@ var ADMIN_HEADERS=['관리자ID','이름','이메일','비밀번호','활성여�
 function estimateAmount_(value){if((typeof value!=='string'&&typeof value!=='number')||String(value).trim()==='')throw Error('예상공사비와 예상지원금한도를 입력해주세요.');var n=Number(value);if(!isFinite(n)||n<0||n>999999999)throw Error('견적 금액은 0 이상 999,999,999 이하의 숫자로 입력해주세요.');return Math.round(n*100)/100;}
 function saveCaseEstimate_(d){if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var cost=estimateAmount_(d.constructionCost),limit=estimateAmount_(d.subsidyLimit),customer=Math.max(0,Math.round((cost-limit)*100)/100);return withLock_(function(){var sh=sheets_().cases,r=findRow_(sh,'CaseID',d.caseId);if(!r)throw Error('케이스를 찾을 수 없습니다.');[['예상공사비',cost],['예상지원금한도',limit],['고객부담예상액',customer]].forEach(function(pair){sh.getRange(r.row,r.m[pair[0]]+1).setValue(pair[1]);});return {success:true,estimate:{constructionCost:cost,subsidyLimit:limit,customerCost:customer}};});}
 
-function doGet(e){try{var q=String((e.parameter||{}).query||'').trim();if(q==='programStatus')return out_({success:true,statuses:getProgramStatuses()});var d={adminId:(e.parameter||{}).adminId||'',adminPassword:(e.parameter||{}).adminPassword||''};if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});if(!q)return out_({success:false,error:'CaseID 또는 전화번호가 필요합니다.'});return out_({success:true,cases:findCases_(q,true)});}catch(x){return out_({success:false,error:x.message});}}
-function doPost(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}'),a=d.action;if(a==='createCase')return out_(createCase_(d));if(a==='submitContractorApplication')return out_(submitContractorApplication(d.data||d));if(a==='adminLogin'){var login=authenticateAdmin_(d,true);return out_({success:login.success,adminName:login.name||''});}if(a==='contractorLogin')return out_({success:validateContractorLogin(d.contractorId,d.accessCode)});if(a==='getMyCases')return out_({success:true,cases:getCasesForContractor(d.contractorId,d.accessCode)});if(a==='updateMyCaseStatus')return out_(updateCaseStatusByContractor(d.caseId,d.contractorId,d.accessCode,d.newStatus,d.note));if(a==='sendOTP')return out_(sendContractOTP(d.contractorId,d.accessCode));if(a==='verifyOTP')return out_(verifyContractOTP(d.contractorId,d.accessCode,d.inputCode));if(a==='sendEmailOTP')return out_(sendContractEmailOTP(d.contractorId,d.accessCode));if(a==='verifyEmailOTP')return out_(verifyContractEmailOTP(d.contractorId,d.accessCode,d.inputCode));if(a==='submitAgreement')return out_(submitContractorAgreement(d.contractorId,d.accessCode,d.data||{}));if(a==='getAgreementStatus')return out_({success:true,agreement:getContractorAgreementStatus(d.contractorId,d.accessCode)});if(a==='getCasesForContractor')return out_({success:true,cases:getCasesForContractor(d.contractorId,d.accessCode)});if(a==='updateStatus'){if(!authorizeStatus_(d))return out_({success:false,error:'상태 변경 권한이 없습니다.'});if(admin_(d))d.agent=getAdminName_(d);return out_(updateStatus_(d));}if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});if(a==='saveCaseEstimate')return out_(saveCaseEstimate_(d));var adminName=getAdminName_(d);if(a==='listAdmins')return out_({success:true,admins:listAdmins(d)});if(a==='registerAdmin')return out_(registerAdmin(d.name,d.email,d.password,d));if(a==='updateAdmin')return out_(updateAdmin(d.targetAdminId||d.adminId,d.data||{},d));if(a==='getContractorApplications')return out_({success:true,applications:getContractorApplications(d.status||'전체')});if(a==='reviewContractorApplication')return out_(reviewContractorApplication(d.applicationId,d.decision,d.note||''));if(a==='resendInvite')return out_(resendContractorInvite(d.contractorId));if(a==='updateProgramStatus')return out_(updateProgramStatus(d.programName,d.active,d.memo||''));if(a==='getProgramStatusDetails')return out_({success:true,programs:getProgramStatusDetails_()});if(a==='confirmManualIdentity')return out_(confirmManualIdentity(d.contractorId,adminName));if(a==='markLicenseVerified')return out_(markLicenseVerified(d.contractorId,adminName));if(a==='registerContractor')return out_(registerContractor(d));if(a==='updateContractor')return out_(updateContractor(d.contractorId,d));if(a==='listContractors')return out_({success:true,contractors:getContractors_()});if(a==='getCases')return out_({success:true,cases:findCases_(d.query||'',true)});if(a==='getUnassignedCases')return out_({success:true,cases:getUnassignedCases()});if(a==='assignCase')return out_(assignCaseToContractor(d.caseId,d.contractorId,adminName));if(a==='dashboard')return out_({success:true,summary:getDashboardSummary(d.delayDays)});if(a==='subPayment')return out_(recordSubPayment(d.caseId,d.amount,d.date,adminName));if(a==='govReimbursement')return out_(recordGovReimbursement(d.caseId,d.amount,d.date));if(a==='paymentCandidates')return out_({success:true,cases:paymentCandidates_()});return out_({success:false,error:'지원하지 않는 요청입니다.'});}catch(x){return out_({success:false,error:x.message});}}
+function doGet(e){try{var q=String((e.parameter||{}).query||'').trim();if(q==='paymentStatus')return out_(getPendingPaymentStatus((e.parameter||{}).token));if(q==='programStatus')return out_({success:true,statuses:getProgramStatuses()});var d={adminId:(e.parameter||{}).adminId||'',adminPassword:(e.parameter||{}).adminPassword||''};if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});if(!q)return out_({success:false,error:'CaseID 또는 전화번호가 필요합니다.'});return out_({success:true,cases:findCases_(q,true)});}catch(x){return out_({success:false,error:x.message});}}
+function doPost(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}'),a=d.action;if(a==='createCase')return out_({success:false,error:'결제 확인 후에만 신청을 접수할 수 있습니다.'});if(a==='createPendingPayment')return out_(createPendingPayment(d.applicantData,d.matchingResult,d.priceType));if(a==='verifySession')return out_(verifyStripeSession(d.sessionId,d.token));if(a==='submitContractorApplication')return out_(submitContractorApplication(d.data||d));if(a==='adminLogin'){var login=authenticateAdmin_(d,true);return out_({success:login.success,adminName:login.name||''});}if(a==='contractorLogin')return out_({success:validateContractorLogin(d.contractorId,d.accessCode)});if(a==='getMyCases')return out_({success:true,cases:getCasesForContractor(d.contractorId,d.accessCode)});if(a==='updateMyCaseStatus')return out_(updateCaseStatusByContractor(d.caseId,d.contractorId,d.accessCode,d.newStatus,d.note));if(a==='sendOTP')return out_(sendContractOTP(d.contractorId,d.accessCode));if(a==='verifyOTP')return out_(verifyContractOTP(d.contractorId,d.accessCode,d.inputCode));if(a==='sendEmailOTP')return out_(sendContractEmailOTP(d.contractorId,d.accessCode));if(a==='verifyEmailOTP')return out_(verifyContractEmailOTP(d.contractorId,d.accessCode,d.inputCode));if(a==='submitAgreement')return out_(submitContractorAgreement(d.contractorId,d.accessCode,d.data||{}));if(a==='getAgreementStatus')return out_({success:true,agreement:getContractorAgreementStatus(d.contractorId,d.accessCode)});if(a==='getCasesForContractor')return out_({success:true,cases:getCasesForContractor(d.contractorId,d.accessCode)});if(a==='updateStatus'){if(!authorizeStatus_(d))return out_({success:false,error:'상태 변경 권한이 없습니다.'});if(admin_(d))d.agent=getAdminName_(d);return out_(updateStatus_(d));}if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});if(a==='listUnconfirmedPayments')return out_(listUnconfirmedPayments(d));if(a==='confirmPendingPaymentManually')return out_(confirmPendingPaymentManually(d));if(a==='saveCaseEstimate')return out_(saveCaseEstimate_(d));var adminName=getAdminName_(d);if(a==='listAdmins')return out_({success:true,admins:listAdmins(d)});if(a==='registerAdmin')return out_(registerAdmin(d.name,d.email,d.password,d));if(a==='updateAdmin')return out_(updateAdmin(d.targetAdminId||d.adminId,d.data||{},d));if(a==='getContractorApplications')return out_({success:true,applications:getContractorApplications(d.status||'전체')});if(a==='reviewContractorApplication')return out_(reviewContractorApplication(d.applicationId,d.decision,d.note||''));if(a==='resendInvite')return out_(resendContractorInvite(d.contractorId));if(a==='updateProgramStatus')return out_(updateProgramStatus(d.programName,d.active,d.memo||''));if(a==='getProgramStatusDetails')return out_({success:true,programs:getProgramStatusDetails_()});if(a==='confirmManualIdentity')return out_(confirmManualIdentity(d.contractorId,adminName));if(a==='markLicenseVerified')return out_(markLicenseVerified(d.contractorId,adminName));if(a==='registerContractor')return out_(registerContractor(d));if(a==='updateContractor')return out_(updateContractor(d.contractorId,d));if(a==='listContractors')return out_({success:true,contractors:getContractors_()});if(a==='getCases')return out_({success:true,cases:findCases_(d.query||'',true)});if(a==='getUnassignedCases')return out_({success:true,cases:getUnassignedCases()});if(a==='assignCase')return out_(assignCaseToContractor(d.caseId,d.contractorId,adminName));if(a==='dashboard')return out_({success:true,summary:getDashboardSummary(d.delayDays)});if(a==='subPayment')return out_(recordSubPayment(d.caseId,d.amount,d.date,adminName));if(a==='govReimbursement')return out_(recordGovReimbursement(d.caseId,d.amount,d.date));if(a==='paymentCandidates')return out_({success:true,cases:paymentCandidates_()});return out_({success:false,error:'지원하지 않는 요청입니다.'});}catch(x){return out_({success:false,error:x.message});}}
 function out_(v){return ContentService.createTextOutput(JSON.stringify(v)).setMimeType(ContentService.MimeType.JSON);}function setAdminLastLogin_(adminId){return withLock_(function(){var sh=ensureAdmins_(),r=findRow_(sh,'관리자ID',adminId);if(r)sh.getRange(r.row,r.m['최종로그인일시']+1).setValue(new Date());});}function authenticateAdmin_(d,updateLogin){var p=PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD'),password=String(d.adminPassword||''),id=String(d.adminId||'').trim(),sh=ensureAdmins_();if(p&&password===p){var owner=findRow_(sh,'관리자ID','ADM-001');if(updateLogin&&owner)setAdminLastLogin_('ADM-001');return {success:true,name:owner?String(owner.data[owner.m['이름']]||'대표님'):'대표님'};}if(!id||!password)return {success:false,name:''};var r=findRow_(sh,'관리자ID',id);if(!r||r.data[r.m['활성여부']]!=='예'||String(r.data[r.m['비밀번호']])!==password)return {success:false,name:''};if(updateLogin)setAdminLastLogin_(id);return {success:true,name:String(r.data[r.m['이름']]||'관리자')};}function admin_(d){return authenticateAdmin_(d,false).success;}function getAdminName_(d){var p=PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD'),password=String(d.adminPassword||''),id=String(d.adminId||'').trim(),sh=ensureAdmins_();if(p&&password===p){var owner=findRow_(sh,'관리자ID','ADM-001');return owner?String(owner.data[owner.m['이름']]||'대표님'):'대표님';}if(id){var r=findRow_(sh,'관리자ID',id);if(r&&r.data[r.m['활성여부']]==='예'&&String(r.data[r.m['비밀번호']])===password)return String(r.data[r.m['이름']]||'관리자');}return '관리자';}
-function withLock_(fn){var lock=LockService.getScriptLock();try{lock.waitLock(10000);}catch(e){throw new Error('다른 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.');}try{return fn();}finally{lock.releaseLock();}}
+// 동일 실행 안의 중첩 저장(createCase_)은 이미 획득한 Script Lock을 유지합니다.
+var scriptLockHeld_=false;
+function withLock_(fn){if(scriptLockHeld_)return fn();var lock=LockService.getScriptLock();try{lock.waitLock(10000);}catch(e){throw new Error('다른 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.');}scriptLockHeld_=true;try{return fn();}finally{scriptLockHeld_=false;lock.releaseLock();}}
 function ensure_(name,headers){var ss=SpreadsheetApp.getActive(),sh=ss.getSheetByName(name);if(!sh){sh=ss.insertSheet(name);sh.appendRow(headers);sh.setFrozenRows(1);return sh;}var old=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0];headers.forEach(function(h){if(old.indexOf(h)<0){sh.getRange(1,sh.getLastColumn()+1).setValue(h);old.push(h);}});return sh;}
 function ensureAdmins_(){var sh=ensure_('Admins',ADMIN_HEADERS);if(sh.getLastRow()<=1){var legacy=PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');if(legacy)sh.appendRow(['ADM-001','대표님','',legacy,'예',new Date(),'']);}return sh;}function ensureProgramStatus_(){var sh=ensure_('ProgramStatus',PROGRAM_HEADERS);if(sh.getLastRow()<=1)PROGRAM_NAMES.forEach(function(n){sh.appendRow([n,'예',new Date(),'']);});return sh;}function sheets_(){return {cases:ensure_('Cases',CASE_HEADERS),history:ensure_('StatusHistory',HISTORY_HEADERS),contractors:ensure_('Contractors',CONTRACTOR_HEADERS),payments:ensure_('Payments',PAYMENT_HEADERS),applications:ensure_('ContractorApplications',APPLICATION_HEADERS),admins:ensureAdmins_(),programStatus:ensureProgramStatus_()};}function map_(sh){var h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0],m={};h.forEach(function(x,i){m[x]=i;});return m;}function rows_(sh){var v=sh.getDataRange().getValues(),m={};v[0].forEach(function(x,i){m[x]=i;});return {v:v,m:m};}function json_(v,f){try{return JSON.parse(v);}catch(e){return f;}}function date_(v){return v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd HH:mm:ss'):String(v||'');}function dateOnly_(v){return v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),'yyyy-MM-dd'):String(v||'');}function findRow_(sh,col,value){var x=rows_(sh);for(var i=1;i<x.v.length;i++)if(String(x.v[i][x.m[col]])===String(value))return {row:i+1,data:x.v[i],m:x.m};return null;}
 
@@ -60,3 +62,123 @@ function paymentCandidates_(){var s=sheets_(),x=rows_(s.cases),out=[],statuses=[
 function submitContractorApplication(d){return withLock_(function(){if(!d.name||!d.phone||!d.email)throw Error('이름, 연락처, 이메일은 필수입니다.');var s=sheets_(),x=rows_(s.applications),now=new Date(),cutoff=now.getTime()-86400000;for(var i=1;i<x.v.length;i++)if((String(x.v[i][x.m['이메일']])===String(d.email)||String(x.v[i][x.m['연락처']])===String(d.phone))&&x.v[i][x.m['지원일시']] instanceof Date&&x.v[i][x.m['지원일시']].getTime()>=cutoff)throw Error('이미 접수된 지원서가 있습니다');var id='APP-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMdd-HHmmss')+'-'+Math.floor(100+Math.random()*900),email=String(d.email||'').trim(),applicantEmailSent=false,adminEmailSent=false,base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';s.applications.appendRow([id,now,d.name,d.phone,email,d.serviceArea||'',d.licenseNumber||'',d.licenseType||'',d.licenseExpiry||'',d.bondCompany||'',d.bondNumber||'',d.bondAmount||'',d.bondExpiry||'',d.bio||'','검토대기','','','']);try{Logger.log('지원자 접수 확인 이메일 발송 시도: 수신자='+email);MailApp.sendEmail({to:email,subject:'[클린EV] 협력업체 지원이 접수되었습니다',body:'안녕하세요, '+d.name+'님. 클린EV 협력업체 지원이 정상적으로 접수되었습니다. 담당자가 검토 후 영업일 기준 며칠 내로 이메일 또는 전화로 결과를 안내드리겠습니다. 문의사항은 '+APP_CONFIG.contactEmail+'로 연락해주세요.',name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});applicantEmailSent=true;Logger.log('지원자 접수 확인 이메일 발송 성공');}catch(e){Logger.log('지원자 접수 확인 이메일 발송 실패: '+String(e&&e.message||e||'알 수 없는 오류'));}try{Logger.log('관리자 신규 지원 알림 이메일 발송 시도: 수신자='+APP_CONFIG.contactEmail);MailApp.sendEmail({to:APP_CONFIG.contactEmail,subject:'[클린EV] 신규 협력업체 지원이 접수되었습니다',body:'새로운 협력업체 지원이 접수되었습니다.\n\n업체명: '+d.name+'\n연락처: '+d.phone+'\n이메일: '+email+'\n서비스지역: '+(d.serviceArea||'')+'\n라이선스: '+(d.licenseNumber||'')+'\n\n관리자 페이지에서 검토해주세요:\n'+base+'/admin.html',name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});adminEmailSent=true;Logger.log('관리자 신규 지원 알림 이메일 발송 성공');}catch(e){Logger.log('관리자 신규 지원 알림 이메일 발송 실패: '+String(e&&e.message||e||'알 수 없는 오류'));}return {success:true,applicationId:id,applicantEmailSent:applicantEmailSent,adminEmailSent:adminEmailSent};});}
 function getContractorApplications(status){var s=sheets_(),x=rows_(s.applications),out=[];for(var i=1;i<x.v.length;i++){var r=x.v[i];if(status&&status!=='전체'&&r[x.m['지원상태']]!==status)continue;var o={};Object.keys(x.m).forEach(function(k){o[k]=date_(r[x.m[k]]);});out.push(o);}return out.sort(function(a,b){return String(b['지원일시']).localeCompare(String(a['지원일시']));});}
 function resendContractorInvite(contractorId){var s=sheets_(),c=findRow_(s.contractors,'컨트랙터ID',contractorId);if(!c)throw Error('해당 업체를 찾을 수 없습니다.');var cm=c.m,code=String(c.data[cm['액세스코드']]||'');if(c.data[cm['계약서동의여부']]==='예')return {success:false,emailSent:false,emailError:'이미 계약이 완료된 업체입니다. 재발송이 필요하시면 액세스코드를 직접 전달해주세요: '+code,accessCode:code};var apps=rows_(s.applications),email='';for(var i=1;i<apps.v.length;i++)if(String(apps.v[i][apps.m['컨트랙터ID']])===String(contractorId)){email=String(apps.v[i][apps.m['이메일']]||'').trim();break;}if(!email)return {success:true,emailSent:false,emailError:'지원서에 등록된 이메일 정보가 없습니다.',accessCode:code};try{Logger.log('이메일 발송 시도: 수신자='+email);Logger.log('수신자 이메일 값: ['+email+']');var base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';MailApp.sendEmail({to:email,subject:'클린EV 협력업체 계약 안내 (재발송)',body:'계약서 작성 안내를 다시 보내드립니다. 아래 정보로 로그인 후 계약서를 작성해주세요 — 컨트랙터ID: '+contractorId+', 액세스코드: '+code+', 계약서 링크: '+base+'/contract.html?contractorId='+encodeURIComponent(contractorId),name:'클린EV',replyTo:'jdlee.electric@gmail.com'});Logger.log('이메일 발송 성공');return {success:true,emailSent:true,emailError:'',accessCode:code};}catch(e){var error=String(e&&e.message||e||'알 수 없는 오류');Logger.log('이메일 발송 실패: '+error);return {success:true,emailSent:false,emailError:error,accessCode:code};}}function reviewContractorApplication(id,decision,note){if(['승인','거절'].indexOf(decision)<0)throw Error('승인 또는 거절만 가능합니다.');var s=sheets_(),r=findRow_(s.applications,'지원ID',id),m=r&&r.m;if(!r)throw Error('지원서를 찾을 수 없습니다.');if(r.data[m['지원상태']]!=='검토대기')throw Error('이미 처리된 지원서입니다.');var now=new Date(),contractorId='',code='',emailSent=false,emailError='';if(decision==='승인'){var created=registerContractor({contractor:{name:r.data[m['업체명/이름']],phone:r.data[m['연락처']],email:r.data[m['이메일']],active:true}});contractorId=created.contractorId;code=created.accessCode;var cr=findRow_(s.contractors,'컨트랙터ID',contractorId),cm=cr.m;[['라이선스번호',r.data[m['라이선스번호']]],['라이선스종류',r.data[m['라이선스종류']]],['라이선스만료일',r.data[m['라이선스만료일']]],['본드회사명',r.data[m['본드회사명']]],['본드번호',r.data[m['본드번호']]],['본드보장금액',r.data[m['본드보장금액']]],['본드만료일',r.data[m['본드만료일']]],['계약서동의여부','아니오'],['본인확인방식','관리자수동확인대기']].forEach(function(v){s.contractors.getRange(cr.row,cm[v[0]]+1).setValue(v[1]);});var email=String(r.data[m['이메일']]||'').trim();try{Logger.log('이메일 발송 시도: 수신자=' + email);Logger.log('수신자 이메일 값: [' + email + ']');var base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';MailApp.sendEmail({to:email,subject:'클린EV 협력업체 지원 승인 안내',body:'지원이 승인되었습니다. 아래 정보로 로그인 후 계약서를 작성해주세요 — 컨트랙터ID: '+contractorId+', 액세스코드: '+code+', 계약서 링크: '+base+'/contract.html?contractorId='+encodeURIComponent(contractorId),name:'클린EV',replyTo:'jdlee.electric@gmail.com'});emailSent=true;Logger.log('이메일 발송 성공');}catch(e){emailError=String(e&&e.message||e||'알 수 없는 오류');Logger.log('이메일 발송 실패: '+emailError);}}s.applications.getRange(r.row,m['지원상태']+1,1,4).setValues([[decision,now,note,contractorId]]);return {success:true,contractorId:contractorId,accessCode:code,emailSent:emailSent,emailError:emailError};}
+
+/* 신청 대행 결제: 비밀키는 Script Properties에만 저장합니다. */
+var STRIPE_PRICES={vehicleOnly:99,withCharger:199};
+var PENDING_PAYMENT_HEADERS=['결제토큰','생성일시','가격유형','금액','결제상태','Stripe세션ID','신청자정보임시JSON','매칭결과임시JSON','최종수정일시','접수CaseID','결제확인방식','확인관리자ID','확인관리자명','확인일시'];
+function pendingSheet_(){return ensure_('PendingPayments',PENDING_PAYMENT_HEADERS);}
+function validPaymentToken_(token){return /^PAY-[a-f0-9]{32}$/.test(String(token||''));}
+function validStripeSession_(id){return /^cs_(test_|live_)[A-Za-z0-9]+$/.test(String(id||''));}
+function createPendingPayment(applicantData,matchingResult,priceType){
+  if(!Object.prototype.hasOwnProperty.call(STRIPE_PRICES,priceType))throw Error('가격 유형을 확인해주세요.');
+  var applicant=JSON.parse(JSON.stringify(applicantData||{}));
+  if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 전화번호, 이메일을 확인해주세요.');
+  if(applicant.applicationConsent!=='예'||!String(applicant.applicationConsentSignature||'').trim()||!isFinite(Date.parse(applicant.applicationConsentAt)))throw Error('신청 대행 동의와 전자서명을 완료해주세요.');
+  if(['yes','no'].indexOf(applicant.wantsCharger)<0)throw Error('충전기 설치 희망 여부를 선택해주세요.');
+  var expected=applicant.wantsCharger==='yes'?'withCharger':'vehicleOnly';
+  if(priceType!==expected||(applicant.purchaseType==='charger'&&expected!=='withCharger'))throw Error('충전기 선택과 이용료 유형을 확인해주세요.');
+  if(!matchingResult||!Array.isArray(matchingResult.results))throw Error('신청 검토 정보를 확인해주세요.');
+  applicant.servicePricingType=priceType;applicant.serviceFee=STRIPE_PRICES[priceType];
+  delete applicant.paymentToken;
+  var a=JSON.stringify(applicant),m=JSON.stringify(matchingResult);
+  if(a.length>45000||m.length>45000)throw Error('입력 내용이 너무 깁니다. 내용을 줄여주세요.');
+  return withLock_(function(){
+    var sh=pendingSheet_(),token='PAY-'+Utilities.getUuid().replace(/-/g,''),now=new Date();
+    sh.appendRow([token,now,priceType,STRIPE_PRICES[priceType],'대기','',a,m,now,'','','','','']);
+    Logger.log('결제대기 신청 저장 완료');
+    return {success:true,token:token};
+  });
+}
+function getPendingPaymentStatus(token){
+  return withLock_(function(){
+    var r=validPaymentToken_(token)&&findRow_(pendingSheet_(),'결제토큰',token);
+    return {status:r?String(r.data[r.m['결제상태']]):'없음'};
+  });
+}
+function verifyStripeSession(sessionId,token){
+  var secret=PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  if(!secret)return {success:false,error:'결제 시스템이 아직 설정되지 않았습니다'};
+  try{
+    if(!validStripeSession_(sessionId))throw Error('결제 세션 정보가 올바르지 않습니다.');
+    if(token&&!validPaymentToken_(token))throw Error('결제 토큰이 올바르지 않습니다.');
+    var response=UrlFetchApp.fetch('https://api.stripe.com/v1/checkout/sessions/'+encodeURIComponent(sessionId),{headers:{Authorization:'Bearer '+secret},muteHttpExceptions:true});
+    if(response.getResponseCode()!==200)throw Error('결제 정보를 조회하지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해주세요.');
+    var session=JSON.parse(response.getContentText()),actualToken=session.client_reference_id;
+    if(session.id!==sessionId||!validPaymentToken_(actualToken)||(token&&token!==actualToken))throw Error('결제 정보와 신청 정보가 일치하지 않습니다.');
+    if(session.payment_status!=='paid'||session.status!=='complete')return {success:false,pending:true,error:'결제 확인 중입니다. 잠시 후 다시 확인해주세요.'};
+    if(session.mode!=='payment'||session.currency!=='usd')throw Error('결제 통화 또는 결제 유형이 일치하지 않습니다.');
+    var testKey=/^(sk|rk)_test_/.test(secret);
+    if(session.livemode!==!testKey)throw Error('결제 운영 모드가 일치하지 않습니다.');
+    return withLock_(function(){
+      var r=findRow_(pendingSheet_(),'결제토큰',actualToken);
+      if(!r)throw Error('결제대기 신청을 찾을 수 없습니다. 관리자에게 문의해주세요.');
+      var expected=STRIPE_PRICES[r.data[r.m['가격유형']]];
+      if(!expected||Number(r.data[r.m['금액']])!==expected||session.amount_total!==expected*100)throw Error('결제 금액이 신청 이용료와 일치하지 않습니다.');
+      return completePendingPayment_(actualToken,sessionId,'Stripe API','','');
+    });
+  }catch(error){
+    Logger.log('Stripe 결제 확인 실패: '+String(error.message));
+    return {success:false,error:error.message||'결제 확인에 실패했습니다. 관리자에게 문의해주세요.'};
+  }
+}
+/* 반드시 Script Lock 안에서 호출. Cases 저장 후 통신/시트 오류가 나도 토큰으로 복구합니다. */
+function completePendingPayment_(token,sessionId,method,adminId,adminName){
+  var sh=pendingSheet_(),r=findRow_(sh,'결제토큰',token);
+  if(!r)throw Error('결제대기 신청을 찾을 수 없습니다.');
+  var m=r.m;
+  if(r.data[m['결제상태']]==='완료'){
+    if(String(r.data[m['Stripe세션ID']])!==sessionId)throw Error('이미 다른 결제로 접수된 신청입니다. 관리자에게 문의해주세요.');
+    return {success:true,status:'완료'};
+  }
+  var all=rows_(sh);
+  for(var i=1;i<all.v.length;i++){
+    if(String(all.v[i][all.m['Stripe세션ID']])===sessionId&&String(all.v[i][all.m['결제토큰']])!==token)throw Error('이미 다른 신청에 사용된 결제 세션입니다.');
+  }
+  if(r.data[m['Stripe세션ID']]&&String(r.data[m['Stripe세션ID']])!==sessionId)throw Error('기존 확인 중인 결제 세션과 다릅니다. 관리자에게 문의해주세요.');
+  sh.getRange(r.row,m['Stripe세션ID']+1).setValue(sessionId);
+  var applicant=JSON.parse(r.data[m['신청자정보임시JSON']]),matching=JSON.parse(r.data[m['매칭결과임시JSON']]);
+  applicant.paymentToken=token;
+  var s=sheets_(),cases=rows_(s.cases),caseId='';
+  for(var j=1;j<cases.v.length;j++){
+    if(json_(cases.v[j][cases.m['신청자정보(JSON)']],{}).paymentToken===token){caseId=String(cases.v[j][cases.m.CaseID]);break;}
+  }
+  if(!caseId){
+    var result=createCase_({applicant:applicant,matchingResult:matching,programs:matching.results||[],contactPreference:applicant.contactPreference,agent:adminName||'결제 자동확인'});
+    caseId=result.caseId;
+  }
+  // 최초 이력 저장만 실패한 경우에도 append-only로 복구합니다.
+  var history=rows_(s.history),hasHistory=false;
+  for(var k=1;k<history.v.length;k++)if(String(history.v[k][history.m.CaseID])===caseId){hasHistory=true;break;}
+  if(!hasHistory)s.history.appendRow([caseId,new Date(),'','대기','결제 접수 이력 복구',adminName||'결제 자동확인']);
+  var updated=r.data.slice(),now=new Date();
+  updated[m['결제상태']]='완료';updated[m['Stripe세션ID']]=sessionId;updated[m['접수CaseID']]=caseId;
+  updated[m['결제확인방식']]=method;updated[m['확인관리자ID']]=adminId;updated[m['확인관리자명']]=adminName;
+  updated[m['확인일시']]=now;updated[m['최종수정일시']]=now;
+  sh.getRange(r.row,1,1,updated.length).setValues([updated]);
+  Logger.log('결제 확인 및 접수 완료: '+caseId+', 방식='+method);
+  return {success:true,status:'완료'};
+}
+function listUnconfirmedPayments(d){
+  if(!admin_(d))throw Error('관리자 인증이 필요합니다.');
+  return withLock_(function(){
+    var x=rows_(pendingSheet_()),out=[],cutoff=Date.now()-24*60*60*1000;
+    for(var i=1;i<x.v.length;i++){
+      var r=x.v[i],m=x.m;
+      if(r[m['결제상태']]!=='대기'||new Date(r[m['생성일시']]).getTime()>cutoff)continue;
+      var a=json_(r[m['신청자정보임시JSON']],{});
+      out.push({token:r[m['결제토큰']],createdAt:date_(r[m['생성일시']]),priceType:r[m['가격유형']],amount:r[m['금액']],sessionId:r[m['Stripe세션ID']]||'',name:a.name||'',email:a.email||'',phone:a.phone||''});
+    }
+    return {success:true,payments:out};
+  });
+}
+function confirmPendingPaymentManually(d){
+  if(!admin_(d))throw Error('관리자 인증이 필요합니다.');
+  if(!validPaymentToken_(d.token)||!validStripeSession_(d.sessionId)||d.confirmed!==true)throw Error('Stripe 대시보드에서 결제 완료·금액·신청 토큰을 확인하고 세션ID를 입력해주세요.');
+  var name=getAdminName_(d),master=PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  var id=master&&String(d.adminPassword||'')===master?'ADM-001 (마스터)':String(d.adminId||'');
+  return withLock_(function(){
+    var r=findRow_(pendingSheet_(),'결제토큰',d.token);
+    if(!r||new Date(r.data[r.m['생성일시']]).getTime()>Date.now()-24*60*60*1000)throw Error('24시간 이상 대기 중인 신청만 수동 확인할 수 있습니다.');
+    return completePendingPayment_(d.token,d.sessionId,'관리자 수동확인',id,name);
+  });
+}
