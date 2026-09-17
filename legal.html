@@ -4,10 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>법적고지 및 개인정보처리방침 | EV 인센티브</title>
-  <style>body{margin:0;background:#f5f8f8;color:#18333f;font:15px/1.75 system-ui,"Malgun Gothic",sans-serif}main{max-width:800px;margin:auto;padding:34px 20px}header{background:#123b50;color:#fff;padding:22px 20px}.legal-header-inner{max-width:800px;margin:auto}.site-logo{display:flex;align-items:center;gap:8px;color:#0F5C4C;text-decoration:none}.site-logo:before{content:"";width:32px;height:32px;flex:0 0 32px;background-color:currentColor;-webkit-mask:url("assets/logo-icon.svg") center/contain no-repeat;mask:url("assets/logo-icon.svg") center/contain no-repeat}.site-logo-icon{display:none;width:32px;height:32px;color:#0F5C4C}.site-logo-text{font-family:"Pretendard",sans-serif;font-weight:700;font-size:22px;color:#0F5C4C}.header-dark .site-logo{color:#F7F6F1}.header-dark .site-logo-icon{color:#F7F6F1}.header-dark .site-logo-text{color:#F7F6F1}h1{margin:0;font-size:25px}article{background:#fff;border:1px solid #d9e4e5;border-radius:10px;padding:22px;margin:16px 0}h2{font-size:20px;margin-top:0}a{color:#126a8d}</style>
+  <style>body{margin:0;background:#f5f8f8;color:#18333f;font:15px/1.75 system-ui,"Malgun Gothic",sans-serif}main{max-width:800px;margin:auto;padding:34px 20px}header{background:#123b50;color:#fff;padding:22px 20px}.legal-header-inner{max-width:800px;margin:auto}.site-logo{display:flex;align-items:center;gap:8px;color:#0F5C4C;text-decoration:none}.site-logo:before{content:"";width:32px;height:32px;flex:0 0 32px;background-color:currentColor;-webkit-mask:url("assets/logo-icon.svg") center/contain no-repeat;mask:url("assets/logo-icon.svg") center/contain no-repeat}.site-logo-icon{display:none;width:32px;height:32px;color:#0F5C4C}.site-logo-text{font-family:"Pretendard",sans-serif;font-weight:700;font-size:22px;color:#0F5C4C}.header-dark .site-logo{color:#F7F6F1}.header-dark .site-logo-icon{color:#F7F6F1}.header-dark .site-logo-text{color:#F7F6F1}h1{margin:0;font-size:25px}article{background:#fff;border:1px solid #d9e4e5;border-radius:10px;padding:22px;margin:16px 0}h2{font-size:20px;margin-top:0}a{color:#126a8d}
+/* 공개 페이지 공통 네비게이션 */
+.public-header-row{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.public-header-row .site-logo{margin:0;flex-shrink:0}
+.public-nav{display:flex;align-items:center;gap:18px}
+.public-nav a{color:#0F5C4C;text-decoration:none;font:600 14px/1.5 Pretendard,sans-serif;padding:10px 0}
+.public-nav a:hover,.public-nav a[aria-current="page"]{text-decoration:underline;text-underline-offset:7px;text-decoration-thickness:2px}
+.public-nav a.public-nav-cta{background:#0F5C4C;color:#F7F6F1;padding:12px 16px;border-radius:8px;text-decoration:none}
+.public-nav a.public-nav-cta:hover{background:#0B4438}
+.public-nav-toggle{display:none;width:auto;margin:0;padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:transparent;color:#0F5C4C;font:24px/1.2 sans-serif;cursor:pointer}
+.header-dark .public-nav a:not(.public-nav-cta),.header-dark .public-nav-toggle{color:#F7F6F1}
+.public-header-row a:focus-visible,.public-nav-toggle:focus-visible{outline:3px solid #E8A33D;outline-offset:4px}
+@media(max-width:799px){
+.public-header-row{gap:12px}
+.public-nav{width:100%;flex-direction:column;align-items:stretch;gap:4px;padding:12px 0;border-top:1px solid #5C5A54}
+.public-nav a{padding:12px}
+.public-header-row.nav-ready .public-nav-toggle{display:block}
+.public-header-row.nav-ready .public-nav{display:none}
+.public-header-row.nav-ready.menu-open .public-nav{display:flex}
+}
+</style>
 </head>
 <body>
-  <header class="header-dark"><div class="legal-header-inner"><a href="landing.html" class="site-logo"><img src="assets/logo-icon.svg" class="site-logo-icon" alt=""><span class="site-logo-text">클린EV</span></a><h1>법적고지 및 개인정보처리방침</h1></div></header>
+  <header class="header-dark"><div class="legal-header-inner"><div class="public-header-row"><a href="landing.html" class="site-logo"><img src="assets/logo-icon.svg" class="site-logo-icon" alt=""><span class="site-logo-text">클린EV</span></a><button type="button" class="public-nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="public-navigation">☰</button><nav id="public-navigation" class="public-nav" aria-label="주요 메뉴"><a href="about.html">서비스 소개</a><a href="contractor-apply.html">협력업체 지원</a><a href="legal.html" aria-current="page">법적고지</a><a href="index.html" class="public-nav-cta">무료 자격 확인</a></nav></div><h1>법적고지 및 개인정보처리방침</h1></div></header>
   <main>
     <article><h2>면책조항</h2><p>본 사이트는 South Coast AQMD(SCAQMD), California Air Resources Board(CARB), 각 유틸리티 회사와 공식 제휴 또는 소속 관계가 아닙니다.</p><p>자격 판정 결과는 예비 안내이며, 최종 승인 여부는 각 프로그램 운영기관이 결정합니다. 프로그램의 자격기준, 지원금액 및 운영 상태는 예고 없이 변경되거나 중단될 수 있습니다.</p><p>이 사이트의 정보는 법률·세무·재정 자문이 아닙니다. 필요한 경우 해당 분야의 자격 있는 전문가와 상담하세요.</p></article>
     <!-- TODO: 실제 법적 효력이 필요한 환불정책이므로 변호사 검토 후 확정할 것 -->
@@ -16,5 +36,25 @@
     <p><a href="landing.html">처음으로</a> · <a href="about.html">서비스 소개</a> · <a href="index.html">무료 자격 확인</a></p>
   </main>
   <script src="site-config.js"></script><script>document.querySelectorAll('.contact').forEach(x=>{x.href='mailto:'+SITE_CONFIG.contactEmail;x.textContent=SITE_CONFIG.contactEmail})</script>
-</body>
+<script>
+/* 모바일 메뉴: 기본 링크는 자바스크립트 없이도 사용 가능 */
+(function(){
+  const header=document.querySelector('.public-header-row');
+  const button=header.querySelector('.public-nav-toggle');
+  const menu=header.querySelector('.public-nav');
+  function setOpen(open){
+    header.classList.toggle('menu-open',open);
+    button.setAttribute('aria-expanded',String(open));
+    button.setAttribute('aria-label',open?'메뉴 닫기':'메뉴 열기');
+  }
+  header.classList.add('nav-ready');
+  button.addEventListener('click',()=>setOpen(button.getAttribute('aria-expanded')!=='true'));
+  header.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&button.getAttribute('aria-expanded')==='true'){setOpen(false);button.focus();}
+  });
+  document.addEventListener('click',event=>{if(!header.contains(event.target))setOpen(false);});
+  menu.addEventListener('click',event=>{if(event.target.closest('a'))setOpen(false);});
+  window.matchMedia('(min-width:800px)').addEventListener('change',()=>setOpen(false));
+})();
+</script></body>
 </html>
