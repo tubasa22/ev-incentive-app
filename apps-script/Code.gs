@@ -77,7 +77,8 @@ function createPendingPayment(applicantData,matchingResult,priceType){
   if(['yes','no'].indexOf(applicant.wantsCharger)<0)throw Error('충전기 설치 희망 여부를 선택해주세요.');
   var expected=applicant.wantsCharger==='yes'?'withCharger':'vehicleOnly';
   if(priceType!==expected||(applicant.purchaseType==='charger'&&expected!=='withCharger'))throw Error('충전기 선택과 이용료 유형을 확인해주세요.');
-  if(!matchingResult||!Array.isArray(matchingResult.results))throw Error('신청 검토 정보를 확인해주세요.');
+  validateIntakeApplicant_(applicant);
+  matchingPrograms_(matchingResult);
   applicant.servicePricingType=priceType;applicant.serviceFee=STRIPE_PRICES[priceType];
   delete applicant.paymentToken;
   var a=JSON.stringify(applicant),m=JSON.stringify(matchingResult);
@@ -143,7 +144,7 @@ function completePendingPayment_(token,sessionId,method,adminId,adminName){
     if(json_(cases.v[j][cases.m['신청자정보(JSON)']],{}).paymentToken===token){caseId=String(cases.v[j][cases.m.CaseID]);break;}
   }
   if(!caseId){
-    var result=createCase_({paymentConfirmed:true,applicant:applicant,matchingResult:matching,programs:matching.results||[],contactPreference:applicant.contactPreference,agent:adminName||'결제 자동확인'});
+    var result=createCase_({paymentConfirmed:true,applicant:applicant,matchingResult:matching,programs:matchingPrograms_(matching),contactPreference:applicant.contactPreference,agent:adminName||'결제 자동확인'});
     caseId=result.caseId;
   }
   // 최초 이력 저장만 실패한 경우에도 append-only로 복구합니다.
@@ -231,4 +232,24 @@ function processRefund(caseId,note,d){
     s.cases.getRange(r.row,1,1,updated.length).setValues([updated]);
     return {success:true,refundedAt:date_(now)};
   });
+}
+
+/* 기존 results 데이터는 읽기 호환, 신규 결과는 그룹 객체 그대로 JSON 저장합니다. */
+function matchingPrograms_(matching){
+  if(matching&&Array.isArray(matching.vehiclePrograms)&&Array.isArray(matching.chargerPrograms))return matching.vehiclePrograms.concat(matching.chargerPrograms);
+  if(matching&&Array.isArray(matching.results))return matching.results;
+  throw Error('신청 검토 정보를 확인해주세요.');
+}
+function validateIntakeApplicant_(a){
+  var required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','wantsCharger','hasEV','previousApplied'];
+  if(required.some(function(k){return a[k]===undefined||a[k]===null||String(a[k]).trim()==='';}))throw Error('자격 확인에 필요한 필수 항목을 모두 입력해주세요.');
+  var options={housing:['자가','렌트'],fuel:['gas','diesel','hybrid','ev'],vehicleOwned:['yes','no'],purchaseType:['new','used','charger'],wantsCharger:['yes','no'],hasEV:['yes','no'],previousApplied:['yes','no']};
+  Object.keys(options).forEach(function(k){if(options[k].indexOf(a[k])<0)throw Error('신청 항목의 선택값을 확인해주세요.');});
+  if(!/^\d{5}$/.test(String(a.zip))||!/^[+\d()\s-]+$/.test(String(a.phone))||String(a.phone).replace(/\D/g,'').length<7||String(a.phone).replace(/\D/g,'').length>15)throw Error('우편번호와 전화번호 형식을 확인해주세요.');
+  var household=Number(a.household),income=Number(a.income),year=Number(a.vehicleYear);
+  if(!isFinite(household)||household<1||Math.floor(household)!==household||!isFinite(income)||income<0||!isFinite(year)||Math.floor(year)!==year||year<1900||year>2027||['2023','2024','2025'].indexOf(String(a.incomeYear))<0)throw Error('가구원수·소득·신고연도·차량 연식을 확인해주세요.');
+  if(a.panelCapacity!==undefined&&String(a.panelCapacity).trim()!==''){
+    var panel=Number(a.panelCapacity);
+    if(!isFinite(panel)||panel<1||panel>2000||Math.floor(panel)!==panel)throw Error('전기패널 용량을 확인해주세요.');
+  }
 }

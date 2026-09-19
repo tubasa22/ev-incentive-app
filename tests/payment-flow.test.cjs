@@ -53,7 +53,7 @@ function environment(){
   });
   vm.runInContext(source,ctx);
   ctx.withLock_(()=>ctx.sheets_());
-  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
+  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',housing:'자가',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
   function pending(charger=false){
     return ctx.createPendingPayment({...applicant,wantsCharger:charger?'yes':'no'},{results:[]},charger?'withCharger':'vehicleOnly').token;
   }
@@ -207,4 +207,18 @@ test('환불 UI 배지·완료건 버튼 숨김·문자열 이스케이프',()=>
   const done=ctx.refundSection({refunded:true,refundedAt:'2026-09-18',refundReason:'<script>'});
   assert(done.includes('환불완료 (2026-09-18)'));assert(!done.includes('<button'));assert(done.includes('&lt;script&gt;'));
 });
-console.log('총 '+checks+'개 결제·환불 흐름 테스트 통과');
+test('새 필수 입력 서버 검증과 그룹 결과 Cases 저장',()=>{
+  const e=environment();
+  for(const name of ['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','wantsCharger','hasEV','previousApplied']){
+    assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,[name]:''},{results:[]},'vehicleOnly'),name);
+  }
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,household:'0'},{results:[]},'vehicleOnly'));
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,panelCapacity:'음수'},{results:[]},'vehicleOnly'));
+  const matching={vehiclePrograms:[{id:'RYR',name:'차량 프로그램',amount:12000,reason:'대상',isActive:false}],chargerPrograms:[],mutuallyExclusiveWarning:null};
+  const t=e.ctx.createPendingPayment({...e.applicant,panelCapacity:''},matching,'vehicleOnly').token;
+  assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,true);
+  const sh=e.tables.get('Cases'),m=e.ctx.map_(sh);
+  assert.deepEqual(JSON.parse(sh.data[1][m['매칭결과JSON']]),matching);
+  assert.deepEqual(JSON.parse(sh.data[1][m['매칭프로그램목록(JSON)']]),matching.vehiclePrograms);
+});
+console.log('총 '+checks+'개 결제·환불·신청 검증 테스트 통과');
