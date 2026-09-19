@@ -10,7 +10,7 @@ function element(value=''){
 async function intake(ready){
   const nodes=new Map(),get=s=>{if(!nodes.has(s))nodes.set(s,element());return nodes.get(s);};
   let sent=[],redirect='';
-  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',pricing:{vehicleOnly:99,withCharger:199,creditNote:'차감 안내'},stripe:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}};
+  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}};
   const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,
     document:{querySelector:get,querySelectorAll:s=>s==='.step'?[element()]:[]},
     FormData:class{*[Symbol.iterator](){yield* Object.entries({name:'테스트',phone:'123',email:'test@example.com',wantsCharger:'no',income:'10000',household:'1',zip:'90001',purchaseType:'new'});}},
@@ -20,7 +20,7 @@ async function intake(ready){
     window:{SITE_CONFIG:config,location:{assign:url=>redirect=url}}
   });ctx.window.fetch=ctx.fetch;vm.runInContext(inline('index.html'),ctx);
   get('#applicationConsent').checked=true;get('#consentSignature').value='테스트';
-  get('[name="wantsCharger"]').value='no';
+  get('[name="serviceType"]:checked').value='vehicleOnly';
   await get('#form').onsubmit({preventDefault(){},target:get('#form')});
   if(ready){
     assert.equal(sent.length,1);assert.equal(sent[0].action,'createPendingPayment');

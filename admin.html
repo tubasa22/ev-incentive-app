@@ -24,14 +24,15 @@ async function loadPayments(){loadUnconfirmedPayments();try{let cases=(await api
 function renderMatchingGroups(c){
   const matching=c.matchingResult||{},legacy=matching.results||c.programs||[];
   const grouped=Array.isArray(matching.vehiclePrograms)&&Array.isArray(matching.chargerPrograms);
-  const vehicles=(grouped?matching.vehiclePrograms:legacy.filter(p=>['RYR','CC4A','DCAP','MyFirstEV'].includes(p.id))).slice().sort((a,b)=>b.amount-a.amount);
+  const chargerOnly=(c.applicant?.servicePricingType||c.applicant?.serviceType)==='chargerOnly';
+  const vehicles=(chargerOnly?[]:grouped?matching.vehiclePrograms:legacy.filter(p=>['RYR','CC4A','DCAP','MyFirstEV'].includes(p.id))).slice().sort((a,b)=>b.amount-a.amount);
   const chargers=(grouped?matching.chargerPrograms:legacy.filter(p=>['Utility','유틸리티리베이트','CALeVIP'].includes(p.id))).slice().sort((a,b)=>b.amount-a.amount);
   const warning=matching.mutuallyExclusiveWarning||(vehicles.filter(p=>['RYR','CC4A','DCAP'].includes(p.id)).length>=2?'이 중 하나만 신청 가능합니다':null);
-  if(!vehicles.length&&!chargers.length)return '<p>해당 가능한 프로그램이 없습니다</p>';
+  if(!chargerOnly&&!vehicles.length&&!chargers.length)return '<p>해당 가능한 프로그램이 없습니다</p>';
   function group(title,list){
     return '<section><h4>'+title+'</h4>'+(list.length?list.map((p,i)=>'<div class="notice"><span class="done-badge">'+(i+1)+'순위</span> <b>'+esc(p.name)+'</b> · 예상 '+money(p.amount)+' '+(p.isActive===false?'<span class="status-off">현재 신청 일시중단</span>':'')+'<p>'+esc(p.reason)+'</p>'+(p.applicabilityNote?'<p><strong>'+esc(p.applicabilityNote)+'</strong></p>':'')+'<small>필요 서류: '+(p.docs||[]).map(esc).join(', ')+'</small></div>').join(''):'<p>해당 가능한 프로그램이 없습니다</p>')+'</section>';
   }
-  return (warning?'<p class="notice" role="note"><strong>'+esc(warning)+'</strong> (RYR/CC4A/DCAP)</p>':'')+group('차량 프로그램',vehicles)+group('충전기·전기공사 프로그램',chargers);
+  return (warning?'<p class="notice" role="note"><strong>'+esc(warning)+'</strong> (RYR/CC4A/DCAP)</p>':'')+(chargerOnly?'<p>차량 프로그램: 해당없음(신청 안 함)</p>':group('차량 프로그램',vehicles))+group('충전기·전기공사 프로그램',chargers);
 }
 
 function money(v){return '$'+Number(v||0).toLocaleString()}function renderReview(cases){$('#reviewResults').innerHTML=cases.map(c=>{return `<article class="box"><h3>${esc(c.caseId)} · ${esc(c.applicant.name)}</h3><p>연락 선호: ${esc(c.contactPreference||'미입력')} · 현재 상태: ${esc(c.status)}</p><h3>매칭 검토 결과</h3>${renderMatchingGroups(c)}${estimateForm(c)}${refundSection(c)}<div class="actions"><button class="contactDone" data-id="${esc(c.caseId)}">고객에게 연락함</button></div></article>`}).join('')||'<p>검색 결과가 없습니다.</p>';$$('.contactDone').forEach(b=>b.onclick=async()=>{try{await api('updateStatus',{caseId:b.dataset.id,newStatus:'결과안내완료',note:'매칭 결과 고객 안내 완료',agent:'관리자'});$('#reviewMessage').className='success';$('#reviewMessage').textContent='결과안내완료 상태로 기록했습니다.';loadReview()}catch(e){$('#reviewMessage').className='error';$('#reviewMessage').textContent=e.message}})}async function loadReview(){let q=$('#reviewQuery').value.trim();if(!q){$('#reviewMessage').className='error';$('#reviewMessage').textContent='CaseID 또는 전화번호를 입력하세요.';return}try{let r=await api('getCases',{query:q});$('#reviewMessage').textContent=`${r.cases.length}건을 찾았습니다.`;renderReview(r.cases)}catch(e){$('#reviewMessage').className='error';$('#reviewMessage').textContent=e.message}}$('#reviewSearch').onclick=loadReview;$('#reviewQuery').onkeydown=e=>e.key==='Enter'&&loadReview();
@@ -71,7 +72,7 @@ async function loadUnconfirmedPayments(){
   box.textContent='결제 미확인 건을 불러오는 중입니다.';
   try{
     const response=await api('listUnconfirmedPayments');
-    box.innerHTML=response.payments.map(p=>'<article class="box"><h3>'+esc(p.name)+'</h3><p>생성: '+esc(p.createdAt)+'<br>연락처: '+esc(p.phone)+' / '+esc(p.email)+'<br>신청 토큰: '+esc(p.token)+'<br>이용료: $'+esc(p.amount)+' ('+(p.priceType==='withCharger'?'충전기 설치 포함':'차량 프로그램만')+')</p><label>Stripe 결제 세션ID<input class="pendingSession" placeholder="cs_live_… 또는 cs_test_…" value="'+esc(p.sessionId)+'"></label><button type="button" class="manualPayment" data-token="'+esc(p.token)+'">결제 확인됨(수동)</button></article>').join('')||'<p>24시간 이상 대기 중인 결제 미확인 건이 없습니다.</p>';
+    box.innerHTML=response.payments.map(p=>'<article class="box"><h3>'+esc(p.name)+'</h3><p>생성: '+esc(p.createdAt)+'<br>연락처: '+esc(p.phone)+' / '+esc(p.email)+'<br>신청 토큰: '+esc(p.token)+'<br>이용료: $'+esc(p.amount)+' ('+esc(({vehicleOnly:'차량 프로그램만',chargerOnly:'충전기·전기패널 업그레이드만',bundle:'차량 및 충전기·전기패널 함께',withCharger:'충전기 설치 포함 (기존 요금)'})[p.priceType]||p.priceType)+')</p><label>Stripe 결제 세션ID<input class="pendingSession" placeholder="cs_live_… 또는 cs_test_…" value="'+esc(p.sessionId)+'"></label><button type="button" class="manualPayment" data-token="'+esc(p.token)+'">결제 확인됨(수동)</button></article>').join('')||'<p>24시간 이상 대기 중인 결제 미확인 건이 없습니다.</p>';
     $('.manualPayment').forEach(button=>button.onclick=async()=>{
       const sessionId=button.closest('article').querySelector('.pendingSession').value.trim();
       if(!/^cs_(test_|live_)[A-Za-z0-9]+$/.test(sessionId)){alert('Stripe 대시보드에서 결제 세션ID를 복사해 입력해주세요.');return;}

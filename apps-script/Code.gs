@@ -64,7 +64,7 @@ function getContractorApplications(status){var s=sheets_(),x=rows_(s.application
 function resendContractorInvite(contractorId){var s=sheets_(),c=findRow_(s.contractors,'컨트랙터ID',contractorId);if(!c)throw Error('해당 업체를 찾을 수 없습니다.');var cm=c.m,code=String(c.data[cm['액세스코드']]||'');if(c.data[cm['계약서동의여부']]==='예')return {success:false,emailSent:false,emailError:'이미 계약이 완료된 업체입니다. 재발송이 필요하시면 액세스코드를 직접 전달해주세요: '+code,accessCode:code};var apps=rows_(s.applications),email='';for(var i=1;i<apps.v.length;i++)if(String(apps.v[i][apps.m['컨트랙터ID']])===String(contractorId)){email=String(apps.v[i][apps.m['이메일']]||'').trim();break;}if(!email)return {success:true,emailSent:false,emailError:'지원서에 등록된 이메일 정보가 없습니다.',accessCode:code};try{Logger.log('이메일 발송 시도: 수신자='+email);Logger.log('수신자 이메일 값: ['+email+']');var base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';MailApp.sendEmail({to:email,subject:'클린EV 협력업체 계약 안내 (재발송)',body:'계약서 작성 안내를 다시 보내드립니다. 아래 정보로 로그인 후 계약서를 작성해주세요 — 컨트랙터ID: '+contractorId+', 액세스코드: '+code+', 계약서 링크: '+base+'/contract.html?contractorId='+encodeURIComponent(contractorId),name:'클린EV',replyTo:'jdlee.electric@gmail.com'});Logger.log('이메일 발송 성공');return {success:true,emailSent:true,emailError:'',accessCode:code};}catch(e){var error=String(e&&e.message||e||'알 수 없는 오류');Logger.log('이메일 발송 실패: '+error);return {success:true,emailSent:false,emailError:error,accessCode:code};}}function reviewContractorApplication(id,decision,note){if(['승인','거절'].indexOf(decision)<0)throw Error('승인 또는 거절만 가능합니다.');var s=sheets_(),r=findRow_(s.applications,'지원ID',id),m=r&&r.m;if(!r)throw Error('지원서를 찾을 수 없습니다.');if(r.data[m['지원상태']]!=='검토대기')throw Error('이미 처리된 지원서입니다.');var now=new Date(),contractorId='',code='',emailSent=false,emailError='';if(decision==='승인'){var created=registerContractor({contractor:{name:r.data[m['업체명/이름']],phone:r.data[m['연락처']],email:r.data[m['이메일']],active:true}});contractorId=created.contractorId;code=created.accessCode;var cr=findRow_(s.contractors,'컨트랙터ID',contractorId),cm=cr.m;[['라이선스번호',r.data[m['라이선스번호']]],['라이선스종류',r.data[m['라이선스종류']]],['라이선스만료일',r.data[m['라이선스만료일']]],['본드회사명',r.data[m['본드회사명']]],['본드번호',r.data[m['본드번호']]],['본드보장금액',r.data[m['본드보장금액']]],['본드만료일',r.data[m['본드만료일']]],['계약서동의여부','아니오'],['본인확인방식','관리자수동확인대기']].forEach(function(v){s.contractors.getRange(cr.row,cm[v[0]]+1).setValue(v[1]);});var email=String(r.data[m['이메일']]||'').trim();try{Logger.log('이메일 발송 시도: 수신자=' + email);Logger.log('수신자 이메일 값: [' + email + ']');var base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';MailApp.sendEmail({to:email,subject:'클린EV 협력업체 지원 승인 안내',body:'지원이 승인되었습니다. 아래 정보로 로그인 후 계약서를 작성해주세요 — 컨트랙터ID: '+contractorId+', 액세스코드: '+code+', 계약서 링크: '+base+'/contract.html?contractorId='+encodeURIComponent(contractorId),name:'클린EV',replyTo:'jdlee.electric@gmail.com'});emailSent=true;Logger.log('이메일 발송 성공');}catch(e){emailError=String(e&&e.message||e||'알 수 없는 오류');Logger.log('이메일 발송 실패: '+emailError);}}s.applications.getRange(r.row,m['지원상태']+1,1,4).setValues([[decision,now,note,contractorId]]);return {success:true,contractorId:contractorId,accessCode:code,emailSent:emailSent,emailError:emailError};}
 
 /* 신청 대행 결제: 비밀키는 Script Properties에만 저장합니다. */
-var STRIPE_PRICES={vehicleOnly:99,withCharger:199};
+var STRIPE_PRICES={vehicleOnly:99,chargerOnly:149,bundle:199};
 var PENDING_PAYMENT_HEADERS=['결제토큰','생성일시','가격유형','금액','결제상태','Stripe세션ID','신청자정보임시JSON','매칭결과임시JSON','최종수정일시','접수CaseID','결제확인방식','확인관리자ID','확인관리자명','확인일시'];
 function pendingSheet_(){return ensure_('PendingPayments',PENDING_PAYMENT_HEADERS);}
 function validPaymentToken_(token){return /^PAY-[a-f0-9]{32}$/.test(String(token||''));}
@@ -74,16 +74,21 @@ function createPendingPayment(applicantData,matchingResult,priceType){
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
   if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 전화번호, 이메일을 확인해주세요.');
   if(applicant.applicationConsent!=='예'||!String(applicant.applicationConsentSignature||'').trim()||!isFinite(Date.parse(applicant.applicationConsentAt)))throw Error('신청 대행 동의와 전자서명을 완료해주세요.');
-  if(['yes','no'].indexOf(applicant.wantsCharger)<0)throw Error('충전기 설치 희망 여부를 선택해주세요.');
-  var expected=applicant.wantsCharger==='yes'?'withCharger':'vehicleOnly';
-  if(priceType!==expected||(applicant.purchaseType==='charger'&&expected!=='withCharger'))throw Error('충전기 선택과 이용료 유형을 확인해주세요.');
+  if(applicant.serviceType!==priceType)throw Error('선택한 서비스와 이용료 유형이 일치하지 않습니다.');
+  applicant.wantsCharger=priceType==='vehicleOnly'?'no':'yes';
+  if(priceType==='chargerOnly'){
+    applicant.purchaseType='charger';
+    ['vehicleYear','fuel','vehicleOwned','smog','desiredVehicle'].forEach(function(key){delete applicant[key];});
+  }
   validateIntakeApplicant_(applicant);
-  matchingPrograms_(matchingResult);
   applicant.servicePricingType=priceType;applicant.serviceFee=STRIPE_PRICES[priceType];
   delete applicant.paymentToken;
-  var a=JSON.stringify(applicant),m=JSON.stringify(matchingResult);
-  if(a.length>45000||m.length>45000)throw Error('입력 내용이 너무 깁니다. 내용을 줄여주세요.');
+  var a=JSON.stringify(applicant);
+  if(a.length>45000)throw Error('입력 내용이 너무 깁니다. 내용을 줄여주세요.');
   return withLock_(function(){
+    // 클라이언트 매칭 결과는 신뢰하지 않고 서비스 유형과 최신 ProgramStatus로 재계산합니다.
+    var m=JSON.stringify(calculateMatching_(applicant,getProgramStatuses()));
+    if(m.length>45000)throw Error('신청 검토 정보가 너무 큽니다.');
     var sh=pendingSheet_(),token='PAY-'+Utilities.getUuid().replace(/-/g,''),now=new Date();
     sh.appendRow([token,now,priceType,STRIPE_PRICES[priceType],'대기','',a,m,now,'','','','','']);
     Logger.log('결제대기 신청 저장 완료');
@@ -113,7 +118,8 @@ function verifyStripeSession(sessionId,token){
     return withLock_(function(){
       var r=findRow_(pendingSheet_(),'결제토큰',actualToken);
       if(!r)throw Error('결제대기 신청을 찾을 수 없습니다. 관리자에게 문의해주세요.');
-      var expected=STRIPE_PRICES[r.data[r.m['가격유형']]];
+      var savedType=r.data[r.m['가격유형']];
+      var expected=savedType==='withCharger'?199:STRIPE_PRICES[savedType]; // 기존 결제대기 건만 호환
       if(!expected||Number(r.data[r.m['금액']])!==expected||session.amount_total!==expected*100)throw Error('결제 금액이 신청 이용료와 일치하지 않습니다.');
       return completePendingPayment_(actualToken,sessionId,'Stripe API','','');
     });
@@ -241,15 +247,38 @@ function matchingPrograms_(matching){
   throw Error('신청 검토 정보를 확인해주세요.');
 }
 function validateIntakeApplicant_(a){
-  var required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','wantsCharger','hasEV','previousApplied'];
+  var only=a.serviceType==='chargerOnly';
+  var required=['name','phone','email','zip','housing','household','income','incomeYear','serviceType','hasEV','previousApplied'];
+  if(!only)required=required.concat(['vehicleYear','fuel','vehicleOwned','purchaseType']);
   if(required.some(function(k){return a[k]===undefined||a[k]===null||String(a[k]).trim()==='';}))throw Error('자격 확인에 필요한 필수 항목을 모두 입력해주세요.');
-  var options={housing:['자가','렌트'],fuel:['gas','diesel','hybrid','ev'],vehicleOwned:['yes','no'],purchaseType:['new','used','charger'],wantsCharger:['yes','no'],hasEV:['yes','no'],previousApplied:['yes','no']};
+  var options={housing:['자가','렌트'],serviceType:['vehicleOnly','chargerOnly','bundle'],hasEV:['yes','no'],previousApplied:['yes','no']};
+  if(!only){options.fuel=['gas','diesel','hybrid','ev'];options.vehicleOwned=['yes','no'];options.purchaseType=['new','used'];}
   Object.keys(options).forEach(function(k){if(options[k].indexOf(a[k])<0)throw Error('신청 항목의 선택값을 확인해주세요.');});
   if(!/^\d{5}$/.test(String(a.zip))||!/^[+\d()\s-]+$/.test(String(a.phone))||String(a.phone).replace(/\D/g,'').length<7||String(a.phone).replace(/\D/g,'').length>15)throw Error('우편번호와 전화번호 형식을 확인해주세요.');
   var household=Number(a.household),income=Number(a.income),year=Number(a.vehicleYear);
-  if(!isFinite(household)||household<1||Math.floor(household)!==household||!isFinite(income)||income<0||!isFinite(year)||Math.floor(year)!==year||year<1900||year>2027||['2023','2024','2025'].indexOf(String(a.incomeYear))<0)throw Error('가구원수·소득·신고연도·차량 연식을 확인해주세요.');
+  if(!isFinite(household)||household<1||Math.floor(household)!==household||!isFinite(income)||income<0||(!only&&(!isFinite(year)||Math.floor(year)!==year||year<1900||year>2027))||['2023','2024','2025'].indexOf(String(a.incomeYear))<0)throw Error('가구원수·소득·신고연도·차량 연식을 확인해주세요.');
   if(a.panelCapacity!==undefined&&String(a.panelCapacity).trim()!==''){
     var panel=Number(a.panelCapacity);
     if(!isFinite(panel)||panel<1||panel>2000||Math.floor(panel)!==panel)throw Error('전기패널 용량을 확인해주세요.');
   }
+}
+
+// index.html의 기존 자격판정 설정/함수와 동기화합니다. tests/matching.test.cjs로 결과 일치를 검증합니다.
+var MATCH_CONFIG={"fpl":{"1":15650,"2":21150,"3":26650,"4":32150,"5":37650,"6":43150,"7":48650,"8":54150,"additional":5500},"zipMap":{"900":["South Coast AQMD","LADWP"],"901":["South Coast AQMD","LADWP"],"902":["South Coast AQMD","SCE"],"903":["South Coast AQMD","SCE"],"904":["South Coast AQMD","SCE"],"905":["South Coast AQMD","SCE"],"906":["South Coast AQMD","SCE"],"907":["South Coast AQMD","SCE"],"908":["South Coast AQMD","SCE"],"910":["South Coast AQMD","SCE"],"911":["South Coast AQMD","SCE"],"912":["South Coast AQMD","SCE"],"913":["South Coast AQMD","SCE"],"914":["South Coast AQMD","SCE"],"915":["South Coast AQMD","SCE"],"916":["South Coast AQMD","SCE"],"917":["South Coast AQMD","SCE"],"918":["South Coast AQMD","SCE"],"919":["South Coast AQMD","SDG&E"],"920":["South Coast AQMD","SDG&E"],"921":["South Coast AQMD","SDG&E"],"922":["South Coast AQMD","SCE"],"923":["South Coast AQMD","SCE"],"924":["South Coast AQMD","SCE"],"925":["South Coast AQMD","SCE"],"926":["South Coast AQMD","SCE"],"927":["South Coast AQMD","SCE"],"928":["South Coast AQMD","SCE"],"930":["South Coast AQMD","SCE"],"940":["Bay Area AQMD","PG&E"],"941":["Bay Area AQMD","PG&E"],"942":["Bay Area AQMD","PG&E"],"943":["Bay Area AQMD","PG&E"],"944":["Bay Area AQMD","PG&E"],"945":["Bay Area AQMD","PG&E"],"946":["Bay Area AQMD","PG&E"],"947":["Bay Area AQMD","PG&E"],"948":["Bay Area AQMD","PG&E"],"949":["Bay Area AQMD","PG&E"],"950":["Monterey Bay APCD","PG&E"],"951":["Bay Area AQMD","PG&E"],"952":["San Joaquin Valley APCD","PG&E"],"953":["San Joaquin Valley APCD","PG&E"],"957":["Sacramento Metro AQMD","SMUD"],"958":["Sacramento Metro AQMD","SMUD"]},"programs":{"RYR":{"name":"Replace Your Ride","amount":12000,"max":400,"docs":["신분증 및 거주 증명","소득 증빙","차량 등록증","폐차/반납 서류"]},"CC4A":{"name":"Clean Cars 4 All","amount":12000,"max":400,"docs":["소득 증빙","차량 등록증","스모그 검사 서류","거주 증명"]},"DCAP":{"name":"Drive Clean Assistance Program","amount":7500,"max":400,"docs":["신분증","소득 증빙","운전면허증","구매 서류"]},"MyFirstEV":{"name":"My First EV","amount":2000,"max":300,"docs":["소득 증빙","거주 증명","신차 구매/리스 서류"]},"CALeVIP":{"name":"CALeVIP 충전기 리베이트","amount":6000,"docs":["설치 주소","충전기 견적서","전기 패널 정보"]},"Utility":{"name":"유틸리티 충전기 리베이트","amount":1000,"docs":["전기요금 고지서","충전기 영수증"]}}};
+function calculateMatching_(applicant,statuses){
+  var CONFIG=MATCH_CONFIG;
+  var liveProgramStatuses=statuses||{};
+  var PROGRAM_STATUS_KEYS={RYR:'RYR',CC4A:'CC4A',DCAP:'DCAP',MyFirstEV:'MyFirstEV',CALeVIP:'CALeVIP',Utility:'유틸리티리베이트'};
+function fplPercent(income,household){return Math.round(Number(income)/(CONFIG.fpl[Math.min(household,8)]+Math.max(0,household-8)*CONFIG.fpl.additional)*100)}function zipInfo(zip){let x=CONFIG.zipMap[String(zip).slice(0,3)];return {district:x?x[0]:'확인 필요',utility:x?x[1]:'확인 필요'}}function eligible(id,d,c){let p=CONFIG.programs[id],old=+d.vehicleYear>0&&d.vehicleOwned==='yes'&&d.fuel!=='ev',ok=false,reason='';if(id==='RYR'||id==='CC4A'){ok=c.zip.district==='South Coast AQMD'&&c.fpl<=p.max&&old&&d.smog==='yes';reason=ok?'지역, 소득 및 기존 차량 조건에 부합합니다.':'South Coast AQMD 지역·400% FPL 이하·본인 명의 스모그 통과 내연기관 차량을 확인해야 합니다.'}else if(id==='DCAP'){ok=c.fpl<=p.max&&d.purchaseType!=='charger';reason=ok?'소득 및 차량 구매 지원 기본 조건에 부합합니다.':'400% FPL 이하와 차량 구매 희망 여부를 확인해야 합니다.'}else if(id==='MyFirstEV'){ok=c.fpl<=p.max&&d.hasEV==='no'&&d.purchaseType==='new';reason=ok?'첫 EV 구매 기본 조건에 부합합니다.':'300% FPL 이하, 기존 EV 미보유, 신차 구매 조건을 확인해야 합니다.'}else if(id==='CALeVIP'){ok=d.purchaseType==='charger';reason=ok?'충전기 설치 희망으로 지역 공고 확인 대상입니다.':'충전기만 지원을 선택한 경우에 해당합니다.'}else{ok=d.purchaseType==='charger'&&c.zip.utility!=='확인 필요';reason=ok?`${c.zip.utility} 관할로 추정됩니다.`:'충전기 지원 및 유틸리티 관할을 확인해야 합니다.'}return {...p,id,ok,reason,isActive:liveProgramStatuses[PROGRAM_STATUS_KEYS[id]]!=='아니오'}}
+function matchPrograms(d){
+  const context={fpl:fplPercent(d.income,d.household),zip:zipInfo(d.zip)};
+  const type=d.serviceType||d.servicePricingType||(d.wantsCharger==='yes'?'bundle':'vehicleOnly');
+  const vehiclePrograms=type==='chargerOnly'?[]:['RYR','CC4A','DCAP','MyFirstEV'].map(id=>eligible(id,d,context)).filter(p=>p.ok).sort((a,b)=>b.amount-a.amount);
+  const chargerInput={...d,purchaseType:'charger'};
+  const chargerIds=type==='chargerOnly'?['Utility']:['Utility','CALeVIP'];
+  const chargerPrograms=type!=='vehicleOnly'?chargerIds.map(id=>eligible(id,chargerInput,context)).filter(p=>p.ok).map(p=>p.id==='CALeVIP'?{...p,applicabilityNote:'개인고객은 보통 해당없음 — 공공·상업용 충전소 중심이므로 개별 공고 확인 필요'}:p).sort((a,b)=>b.amount-a.amount):[];
+  const exclusive=vehiclePrograms.filter(p=>['RYR','CC4A','DCAP'].includes(p.id));
+  return {context,vehiclePrograms,chargerPrograms,mutuallyExclusiveWarning:exclusive.length>=2?'이 중 하나만 신청 가능합니다':null};
+}
+  return matchPrograms(applicant);
 }

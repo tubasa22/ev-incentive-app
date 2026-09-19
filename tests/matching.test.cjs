@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
 const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
-const required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','wantsCharger','hasEV','previousApplied'];
+const required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied'];
 for(const name of required){
   const tag=html.match(new RegExp('<(?:input|select)\\b[^>]*\\bname="'+name+'"[^>]*>'))?.[0];
   assert(tag&&/\brequired\b/.test(tag),name+' 필수 설정');
@@ -13,7 +13,7 @@ assert(!/\brequired\b/.test(html.match(/<input[^>]*name="panelCapacity"[^>]*>/)[
 console.log('통과: 필수 필드 전수 점검·패널 용량 선택 입력');
 const ctx=vm.createContext({SITE_CONFIG:config.window.SITE_CONFIG,window:{},console,fetch:async()=>({json:async()=>({success:false})})});
 vm.runInContext(html.slice(html.indexOf('const CONFIG='),html.indexOf('function show(')),ctx);
-const applicant={income:'10000',household:'2',zip:'90001',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',wantsCharger:'yes'};
+const applicant={income:'10000',household:'2',zip:'90001',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',serviceType:'bundle',wantsCharger:'yes'};
 const result=ctx.matchPrograms(applicant);
 assert.equal(result.vehiclePrograms.length,4);assert.equal(result.chargerPrograms.length,2);
 for(const list of [result.vehiclePrograms,result.chargerPrograms])assert(list.every((p,i)=>i===0||list[i-1].amount>=p.amount));
@@ -22,8 +22,8 @@ assert(result.chargerPrograms.find(p=>p.id==='CALeVIP').applicabilityNote.includ
 assert.equal(applicant.purchaseType,'new');
 vm.runInContext("liveProgramStatuses.RYR='아니오';liveProgramStatuses.유틸리티리베이트='아니오';",ctx);
 const off=ctx.matchPrograms(applicant);assert.equal(off.vehiclePrograms.find(p=>p.id==='RYR').isActive,false);assert.equal(off.chargerPrograms.find(p=>p.id==='Utility').isActive,false);
-assert.equal(ctx.matchPrograms({...applicant,wantsCharger:'no'}).chargerPrograms.length,0);
-const empty=ctx.matchPrograms({...applicant,income:'9999999',vehicleOwned:'no',hasEV:'yes',wantsCharger:'no'});
+assert.equal(ctx.matchPrograms({...applicant,serviceType:'vehicleOnly',wantsCharger:'no'}).chargerPrograms.length,0);
+const empty=ctx.matchPrograms({...applicant,income:'9999999',vehicleOwned:'no',hasEV:'yes',serviceType:'vehicleOnly',wantsCharger:'no'});
 assert.equal(empty.vehiclePrograms.length+empty.chargerPrograms.length,0);assert.equal(empty.mutuallyExclusiveWarning,null);
 console.log('통과: 두 그룹 정렬·복합 희망사항·상호배타·활성 상태·CALeVIP 주의');
 const renderer=admin.slice(admin.indexOf('function renderMatchingGroups(c)'),admin.indexOf('function money(v)'));
@@ -56,3 +56,34 @@ assert.equal(validationCtx.validateFields([field('email','오류',true,false)]).
 assert(html.includes('if(!valid(true))return;'));
 assert(!html.includes('renderMatchingGroups'));
 console.log('통과: 공백·누락·전화·이메일 인라인 오류 및 최종 전체 재검증·고객 결과 비노출');
+const backend=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(root,'apps-script/Code.gs'),'utf8'),backend);
+assert.equal(vm.runInContext('JSON.stringify({fpl:CONFIG.fpl,zipMap:CONFIG.zipMap,programs:CONFIG.programs})',ctx),JSON.stringify(backend.MATCH_CONFIG));
+const statuses={RYR:'아니오',CC4A:'예',DCAP:'예',MyFirstEV:'예',CALeVIP:'예',유틸리티리베이트:'아니오'};
+for(const serviceType of ['vehicleOnly','chargerOnly','bundle']){
+  const d={...applicant,serviceType};
+  assert.equal(JSON.stringify(ctx.matchPrograms(d)),JSON.stringify(backend.calculateMatching_(d,statuses)));
+}
+const only=ctx.matchPrograms({...applicant,serviceType:'chargerOnly'});
+assert.equal(only.vehiclePrograms.length,0);
+assert.equal(only.chargerPrograms.length,1);assert.equal(only.chargerPrograms[0].id,'Utility');
+assert.equal(only.mutuallyExclusiveWarning,null);
+assert(renderCtx.renderMatchingGroups({applicant:{servicePricingType:'chargerOnly'},matchingResult:only}).includes('차량 프로그램: 해당없음(신청 안 함)'));
+console.log('통과: 3가지 서비스 브라우저/서버 판정 일치 및 충전기 전용 관리자 표시');
+let service='chargerOnly';
+const fields=['vehicleYear','fuel','vehicleOwned','smog'].map(name=>({name,required:name!=='smog',disabled:false,setAttribute(){}}));
+const vehicle={hidden:false,querySelectorAll:()=>fields,classList:{toggle(){}}};
+const steps=Array.from({length:6},()=>({hidden:false,classList:{toggle(){}}}));steps[2]=vehicle;
+const progress=Array.from({length:6},()=>({hidden:false,classList:{toggle(){}}}));
+const purchase={value:'new',required:true,closest:()=>({hidden:false})},desired={closest:()=>({hidden:false})};
+const sync=vm.createContext({step:1,selectedServicePrice:()=>({key:service}),resetPriceConsent(){},
+  document:{getElementById:()=>null},
+  $:s=>s==='#vehicleStep'?vehicle:s==='[name="purchaseType"]'?purchase:desired,
+  $$:s=>s==='.step'?steps:progress});
+vm.runInContext(html.slice(html.indexOf('function show(n)'),html.indexOf('function validateFields(')),sync);
+vm.runInContext(html.slice(html.indexOf('function syncServiceFields()'),html.indexOf("$$('[name=\"serviceType\"]')",html.indexOf('function syncServiceFields()'))),sync);
+sync.syncServiceFields();assert(vehicle.hidden);assert(fields.every(f=>f.disabled&&!f.required));assert(purchase.disabled);assert(!purchase.required);
+sync.moveStep(1);assert.equal(sync.step,3);sync.moveStep(-1);assert.equal(sync.step,1);
+service='bundle';sync.syncServiceFields();assert(!vehicle.hidden);assert(fields.slice(0,3).every(f=>!f.disabled&&f.required));assert(!purchase.disabled&&purchase.required);assert.equal(purchase.value,'');
+sync.moveStep(1);assert.equal(sync.step,2);
+console.log('통과: 충전기 전용 단계 앞뒤 건너뛰기·차량 필수 해제·번들 전환 시 복원');

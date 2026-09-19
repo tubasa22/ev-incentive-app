@@ -39,7 +39,8 @@ README.md            — 사람이 읽는 설명서
 ## 3. index.html 요구사항
 
 ### 3.1 인테이크 폼 (다단계, 진행률 표시)
-- 이름·전화·이메일·ZIP·주택소유, 가구원수·소득·신고연도, 기존차 연식·연료·본인명의, 희망지원·충전기희망·기존EV, 과거 신청여부는 필수다. 단계 이동 시 인라인 오류를 표시하고 최종 제출 시 전체 단계를 재검증한다. 전기패널 용량은 선택이다. 서버도 새 결제대기 신청의 필수값과 형식을 확인한다.
+- 서비스 선택은 차량정보보다 앞에서 3개 라디오로 받는다. 가격 3단계: vehicleOnly($99)/chargerOnly($149)/bundle($199, $49 할인). chargerOnly는 기존차량 단계 전체를 숨기고 입력을 비활성화·required 해제하며, 앞뒤 이동과 전체 검증에서도 제외한다. 다른 유형으로 전환하면 필수 검증을 복원한다.
+- 이름·전화·이메일·ZIP·주택소유, 가구원수·소득·신고연도, 서비스 유형·기존EV, 과거 신청여부는 필수다. 기존차 연식·연료·본인명의와 희망 차종 구매유형은 차량만/번들에서만 필수다. 단계 이동 시 인라인 오류를 표시하고 최종 제출 시 전체 단계를 재검증한다. 전기패널 용량은 선택이다. 서버도 새 결제대기 신청의 필수값과 형식을 확인한다.
 - 신청자 기본정보: 이름, 전화, 이메일, 우편번호, 주택소유여부(자가/렌트)
 - 소득정보: 가구원수, 가구총소득(또는 신고소득), 신고연도
 - 기존차량: 연식, 연료타입, 본인명의여부, 스모그체크통과여부
@@ -51,9 +52,10 @@ README.md            — 사람이 읽는 설명서
 - 정확한 전국 매핑이 아니므로 "추정치 — 확인 필요" 배지를 항상 표시
 
 ### 3.3 매칭 룰 엔진 (순수 JS 함수로 분리, 테스트 가능하게)
+- 신규 결제대기 저장 시 서버도 기존 자격판정식과 ProgramStatus로 결과를 다시 계산한다. vehicleOnly와 bundle은 기존 전체 판정을 재사용하고, chargerOnly는 차량 판정 없이 유틸리티리베이트만 계산한다. 브라우저/서버 판정 설정과 결과의 일치 여부를 테스트한다. chargerOnly 관리자 화면에는 "차량 프로그램: 해당없음(신청 안 함)"을 표시한다.
 - 매칭결과 구조: vehiclePrograms/chargerPrograms 그룹화 - 금액순 정렬 + 상호배타 경고, admin.html에서 순위 배지로 표시한다. RYR/CC4A/DCAP가 둘 이상 해당되면 mutuallyExclusiveWarning에 "이 중 하나만 신청 가능합니다"를 기록한다. 기존 context는 보존한다.
-- 기존 eligible 함수를 재사용한다. 충전기 설치 희망 시 충전기 판정에만 purchaseType=charger인 복사본을 전달하며 원본 차량 희망사항은 변경하지 않는다. CALeVIP에는 개인고객 적용 주의를 별도로 표시한다. ProgramStatus의 비활성 배지를 유지한다.
-- 새 신청은 그룹 결과를 PendingPayments와 Cases 매칭결과JSON에 그대로 저장하며, 기존 results 형식도 서버와 관리자에서 읽을 수 있도록 호환한다.
+- 기존 eligible 함수를 재사용한다. 충전기 판정에만 purchaseType=charger인 복사본을 전달하며 원본 차량 희망사항은 변경하지 않는다. chargerOnly는 유틸리티만, bundle은 기존 충전기 판정(CALeVIP 개인고객 적용 주의 포함)을 유지한다. ProgramStatus의 비활성 배지를 유지한다.
+- 새 신청은 서버에서 재계산한 그룹 결과를 PendingPayments와 Cases 매칭결과JSON에 그대로 저장하며, 기존 results 형식도 서버와 관리자에서 읽을 수 있도록 호환한다.
 - FPL % 계산 함수
 - 프로그램별 자격 판정 함수 (boolean + 사유 텍스트 반환)
 - 최종 추천: 금액 내림차순 정렬, 상호배타 조합은 경고 배지
@@ -183,14 +185,14 @@ README.md            — 사람이 읽는 설명서
 - 지원금 한도를 초과하는 충전기·전기패널 공사비는 고객 부담이며, 공사 전 견적·지원금 한도·차액을 안내하고 공사 여부를 별도로 결정한다.
 - Cases에 `예상공사비`, `예상지원금한도`, `고객부담예상액` 컬럼을 추가한다. 관리자 케이스 검토에서 입력하며 고객부담액은 `max(0, 예상공사비 - 예상지원금한도)`로 서버에서 계산한다. 고객에게는 관리자가 전화/이메일로 안내한다.
 
-- `site-config.js`의 `SITE_CONFIG.pricing`에 차량 프로그램 신청 대행 $99, 충전기 설치 포함 신청 대행 $199, 충전기 시공 진행 시 이용료 전액 차감 안내를 관리한다.
+- `site-config.js`의 `SITE_CONFIG.pricing`에 vehicleOnly:99, chargerOnly:149, bundle:199와 시공비 차감 안내를 관리한다. Stripe 링크도 paymentLinkVehicleOnly/paymentLinkChargerOnly/paymentLinkBundle 세 가지로 구분한다.
 - 고객 신청 제출 전 신청 대행 동의서 전문을 끝까지 확인하고 체크한 뒤 전자서명 이름을 입력해야 하며, 동의 여부·동의 일시·전자서명을 신청자정보(JSON)에 저장한다.
 - 환불정책 확정: 3일+제출전=전액환불, 그 외 환불불가 (시공비 차감은 별도 유지). 고객 고지는 결제 후 3영업일 이내 취소 요청 및 정식 신청서 제출 전 조건이다. 영업일 계산은 달력일로 근사함(자동판별은 72시간 이내). 실제 카드 환불은 Stripe 대시보드 수동 처리한다.
 - Cases에 결제일시·환불처리여부·환불처리일시·환불사유를 추가한다. 결제일시는 Stripe 검증 또는 관리자 결제 확인으로 케이스 생성 시 서버가 기록한 접수 시각이다. 재시도해도 최초 시각을 유지하며 기존 데이터는 임의 소급하지 않는다.
 - 관리자 환불 자동판별은 대기·배정됨·방문예정·시공중·서류접수 상태와 72시간을 함께 확인한다. 제출 이력이 있으면 상태를 되돌려도 불가 처리한다. 결제일시 누락·미래 시각 등은 수동 확인이 필요하다.
 - processRefund는 관리자 인증·사유·카드 환불 완료 확인을 요구한다. 불가 건은 명시적인 예외 확인 후 [예외처리] 접두사를 붙인다. 실제 카드 환불 API는 호출하지 않고 환불 필드 및 append-only StatusHistory에 환불처리 이벤트만 기록하며 현재 업무 상태는 유지한다.
 - 자동판별은 처리 시점 기준 참고 표시다. 주말·공휴일, 취소 요청일, 지연 결제 확인으로 인한 차이는 관리자가 실제 결제 내역과 대조하여 예외 처리한다. 환불 정보는 관리자 조회에만 제공하며 컨트랙터 응답에는 노출하지 않는다.
-- 신청 동의 후 PendingPayments에만 임시 저장하고 Stripe Payment Link로 이동한다. 충전기 설치 희망 여부로 차량만 $99 / 충전기 포함 $199를 결정하고 서버 고정 가격으로 재검증한다.
+- 신청 동의 후 PendingPayments에만 임시 저장하고 Stripe Payment Link로 이동한다. 서비스 유형으로 $99/$149/$199를 결정하고 서버 고정 가격으로 재검증한다. 기존 withCharger 결제대기 건의 $199 검증은 호환하되 신규 생성에는 허용하지 않는다.
 - 웹훅과 중계 서버는 사용하지 않는다. Apps Script가 Script Properties의 STRIPE_SECRET_KEY로 Stripe 세션을 직접 조회해 paid·토큰·USD 금액·일회성 결제·테스트/운영 모드를 확인한 후에만 기존 createCase_로 접수한다. 공개 createCase 요청은 차단한다.
 - 성공 URL은 payment-success.html?session_id={CHECKOUT_SESSION_ID}를 사용한다. 임의 토큰 치환은 지원을 가정하지 않으며 서버가 세션의 client_reference_id로 토큰을 복원한다. token이 함께 전달되면 반드시 일치해야 한다.
 - PendingPayments 컬럼: 결제토큰, 생성일시, 가격유형, 금액, 결제상태, Stripe세션ID, 신청자정보임시JSON, 매칭결과임시JSON, 최종수정일시. 복구·감사를 위해 접수CaseID, 결제확인방식, 확인관리자ID, 확인관리자명, 확인일시도 저장한다.
@@ -215,6 +217,8 @@ README.md            — 사람이 읽는 설명서
 | 공통 | site-config.js | 공개 페이지 문의처 설정 |
 
 ### 완료된 것 (검증 완료)
+
+- 가격 3단계: vehicleOnly($99)/chargerOnly($149)/bundle($199, $49 할인). 서비스 라디오·차량 단계 숨김/필수 복원·서버 가격 및 매칭 재계산·3개 Stripe 플레이스홀더·관리자 충전기 전용 표시·법적고지 가격을 반영했다. 모의 테스트 통과, 실결제/브라우저 배포 확인은 별도 필요하다.
 
 - 신청 필수 필드의 required·인라인 오류·최종 전체 단계 검증과 서버 재검증을 보강하고 전기패널 용량 선택 입력을 추가했다. 매칭결과 구조: vehiclePrograms/chargerPrograms 그룹화 - 금액순 정렬 + 상호배타 경고, admin.html에서 순위 배지로 표시. 기존 eligible·ProgramStatus·고객 결과 비노출을 유지하고 구형 results 및 신규 그룹 결과의 결제 후 저장을 모의 테스트로 검증했다.
 - about.html 프로그램 아코디언을 차량 구매 지원(RYR, CC4A/DCAP, MyFirstEV)과 충전기·전기공사 지원(CALeVIP, 유틸리티) 두 그룹으로 구분했다. 개별 확인 안내를 섹션 최상단에 배치하고 기존 프로그램 설명·아코디언 스타일·스크립트·운영자 정보는 그대로 보존했다.
@@ -242,6 +246,8 @@ README.md            — 사람이 읽는 설명서
 
 ## 7. 다음 세션에서 할 일
 
+- 3개 Stripe Payment Link($99/$149/$199)를 설정하고 Code.gs 새 버전 배포 후 각 유형의 신청·결제·접수를 실제 환경에서 확인한다.
+
 - Code.gs 새 버전 배포 후 필수 항목 누락·인라인 오류·관리자 그룹/순위/비활성 표시를 실제 브라우저와 Sheets에서 확인한다.
 - about.html 프로그램 그룹 구분의 모바일·데스크톱 표시를 최종 확인한다.
 - Code.gs 새 버전 배포 후 관리자 환불 배지·예외 확인·완료 표시를 실제 화면에서 확인하고, Stripe 대시보드 수동 환불 기록 절차를 검증한다.
@@ -256,11 +262,13 @@ README.md            — 사람이 읽는 설명서
 
 ## 8. 확인 필요 항목
 
+- 결제 링크 키는 paymentLinkVehicleOnly/paymentLinkChargerOnly/paymentLinkBundle이다. 이전 paymentLinkWithCharger 설정은 bundle로 옮겨야 한다. 세 링크 모두 플레이스홀더 상태를 유지한다. 브라우저와 Code.gs의 MATCH_CONFIG(프로그램 기준) 변경 시 양쪽 설정을 동기화하고 일치 테스트를 실행한다.
+
 - 현재 about.html 원문에는 RYR 충전기 보조금 및 유틸리티 패널 업그레이드 문구가 없다. 이번 그룹 재배치는 설명 수정 금지 요청에 따라 현재 설명을 그대로 보존했으며, 사용자가 언급한 별도 정정본과의 차이는 후속 확인이 필요하다.
 - 환불 자동판별은 현재 시각 기준 72시간 근사이며 고객 고지의 3영업일·취소 요청일과 다를 수 있다. 주말·공휴일, 지연 결제 확인, 결과안내완료/시공완료 등 명시적 허용 목록 밖의 상태는 실제 제출 여부를 관리자가 대조해야 한다. 결제일시는 실제 Stripe 청구시각이 아니라 서버 결제 확인·접수 시각이므로 이 값만으로 환불을 최종 거절하지 않는다. 기존 결제일시 미기록 케이스는 자동판별 불가로 표시한다.
-- Stripe 계정 생성 후 할 일: (1) 일회성 USD Payment Link 2개 생성($99/$199) 후 site-config.js의 CONFIG.stripe(SITE_CONFIG.stripe)에 URL 입력, 성공시 이동 URL은 `https://tubasa22.github.io/ev-incentive-app/payment-success.html?session_id={CHECKOUT_SESSION_ID}`로 설정, (2) Stripe 대시보드의 비밀키(Secret key)를 Script Properties의 STRIPE_SECRET_KEY에 저장 (공개용 Publishable key 아님, 주의).
+- Stripe 계정 생성 후 할 일: (1) 일회성 USD Payment Link 3개 생성($99/$149/$199) 후 site-config.js의 CONFIG.stripe(SITE_CONFIG.stripe)에 URL 입력, 성공시 이동 URL은 `https://tubasa22.github.io/ev-incentive-app/payment-success.html?session_id={CHECKOUT_SESSION_ID}`로 설정, (2) Stripe 대시보드의 비밀키(Secret key)를 Script Properties의 STRIPE_SECRET_KEY에 저장 (공개용 Publishable key 아님, 주의).
 - 토큰 전달 방법 확인 완료: 임의 `{토큰}` 치환은 가정하지 않는다. 결제 링크에 client_reference_id를 추가하고 성공 페이지에는 Stripe가 치환한 세션ID만 전달한다. 서버가 Stripe API 응답의 client_reference_id로 신청 토큰을 복원한다. URL에 token이 있으면 일치 여부도 검증한다. 웹훅·중계 서버·STRIPE_WEBHOOK_SECRET은 사용하지 않는다.
-- Stripe Payment Link는 수량 1 고정, USD, 할인·자동 세금·통화 변환 없이 설정해야 서버의 $99/$199 검증을 통과한다. 테스트 키는 별도 테스트 시트에서 사용하고 운영 시 실제 결제 링크와 운영 비밀키로 함께 전환한다.
+- Stripe Payment Link는 수량 1 고정, USD, 할인·자동 세금·통화 변환 없이 설정해야 서버의 $99/$149/$199 검증을 통과한다. 테스트 키는 별도 테스트 시트에서 사용하고 운영 시 실제 결제 링크와 운영 비밀키로 함께 전환한다.
 - 변경된 Code.gs는 Apps Script에 수동 반영하고 새 버전으로 배포해야 한다. 기존 1분 주기 processPendingConfirmationEmails 트리거를 유지한다. 브라우저 종료 시 자동 검증이 실행되지 않으므로 관리자가 24시간 이상 대기 목록을 정기 확인해야 한다.
 - PendingPayments에도 소득·연락처·동의 정보가 저장된다. 시트 접근권한과 장기 미결제 개인정보 보관·삭제 기한을 운영 전에 확정해야 한다.
 - og:image 비율이 권장 사이즈와 다름 - 전용 썸네일 이미지 제작 검토 (현재 1448×1086, 4:3 / 권장 1200×630, 약 1.91:1). 이번 작업에서는 기존 이미지를 유지했다.
