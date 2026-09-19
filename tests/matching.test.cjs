@@ -36,7 +36,7 @@ const empty=ctx.matchPrograms({...applicant,income:'9999999',vehicleOwned:'no',h
 assert.equal(empty.vehiclePrograms.length+empty.chargerPrograms.length,0);assert.equal(empty.mutuallyExclusiveWarning,null);
 console.log('통과: 두 그룹 정렬·복합 희망사항·상호배타·활성 상태·CALeVIP 주의');
 const renderer=admin.slice(admin.indexOf('function paymentSummaryText(c)'),admin.indexOf('function money(v)'));
-const renderCtx=vm.createContext({esc:x=>String(x??'').replace(/</g,'&lt;'),money:x=>'$'+x});
+const renderCtx=vm.createContext({esc:x=>String(x??'').replace(/</g,'&lt;'),money:x=>'$'+x,dealers:[]});
 vm.runInContext(renderer,renderCtx);
 const rendered=renderCtx.renderMatchingGroups({matchingResult:off});
 assert(rendered.includes('차량 프로그램'));assert(rendered.includes('충전기·전기공사 프로그램'));

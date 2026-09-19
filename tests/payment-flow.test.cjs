@@ -266,4 +266,27 @@ test('접수확인 이메일에 실제 유형·금액과 기존 절차 안내 �
   e.ctx.sendConfirmationEmail_(legacyApplicant,'EV-OLD');
   assert(sent.pop().body.includes('결제 유형·금액 기록 확인 필요'));
 });
+test('딜러 등록·수정·MyFirstEV 소개·소개비 독립 추적',()=>{
+  const e=environment(),auth={adminPassword:'검증용'};
+  assert.throws(()=>e.ctx.getDealers({}));
+  const registered=e.ctx.registerDealer({name:'테스트 딜러',contactName:'김담당',phone:'213-555-9999',email:'dealer@example.com',programs:'MyFirstEV',referralFee:500},auth);
+  assert.match(registered.dealerId,/^DLR-/);assert.equal(e.ctx.getDealers(auth).length,1);
+  e.ctx.updateDealer(registered.dealerId,{referralFee:600},auth);assert.equal(e.ctx.getDealers(auth)[0].referralFee,600);
+  const created=e.ctx.createCase_({applicant:e.applicant,matchingResult:{vehiclePrograms:[{id:'MyFirstEV',name:'My First EV'}],chargerPrograms:[]},paymentConfirmed:true});
+  assert.throws(()=>e.ctx.referCaseToDealer(created.caseId,registered.dealerId,{}));
+  const referred=e.ctx.referCaseToDealer(created.caseId,registered.dealerId,auth);assert.equal(referred.dealerName,'테스트 딜러');
+  assert.throws(()=>e.ctx.referCaseToDealer(created.caseId,registered.dealerId,auth));
+  const history=e.tables.get('StatusHistory').data;assert(history.at(-1)[4].includes('딜러소개: 테스트 딜러'));
+  let candidates=e.ctx.dealerReferralCandidates_(auth);assert.equal(candidates.length,1);assert.equal(candidates[0].expectedFee,600);
+  e.ctx.recordDealerReferralFee(created.caseId,600,'2026-09-18',auth);assert.equal(e.ctx.dealerReferralCandidates_(auth).length,0);
+  const cases=e.tables.get('Cases'),row=cases.data[1],headers=cases.data[0];assert.equal(row[headers.indexOf('소개비수령여부')],'예');assert.equal(row[headers.indexOf('소개비수령액')],600);
+  assert.equal(e.tables.get('Payments').data.length,1,'기존 컨트랙터 정산 시트는 변경하지 않음');
+  const other=e.ctx.createCase_({applicant:e.applicant,matchingResult:{vehiclePrograms:[{id:'RYR'}],chargerPrograms:[]},paymentConfirmed:true});
+  assert.throws(()=>e.ctx.referCaseToDealer(other.caseId,registered.dealerId,auth));
+});
+test('딜러 관리자 UI와 API 라우팅은 관리자 화면에만 존재',()=>{
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8'),contractor=fs.readFileSync(path.join(root,'contractor.html'),'utf8'),index=fs.readFileSync(path.join(root,'index.html'),'utf8');
+  for(const text of ['딜러 제휴','딜러 소개비 관리','referCaseToDealer','recordDealerReferralFee'])assert(admin.includes(text));
+  assert(!contractor.includes('딜러 소개비'));assert(!index.includes('딜러 소개비'));
+});
 console.log('총 '+checks+'개 결제·환불·신청 검증 테스트 통과');
