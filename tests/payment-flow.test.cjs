@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'apps-script/Code.gs'),'utf8');
 function environment(){
   const tables=new Map(),props={STRIPE_SECRET_KEY:'sk_test_검증용',ADMIN_PASSWORD:'검증용'};
-  let held=false,lockCount=0,session={},apiCode=200,failHistory=false,failFinalize=false;
+  let held=false,lockCount=0,session={},apiCode=200,failHistory=false,failFinalize=false,failRefund=false;
   class Sheet{
     constructor(name){this.name=name;this.data=[];}
     appendRow(row){
@@ -23,6 +23,7 @@ function environment(){
     getRange(row,col,height=1,width=1){
       const write=values=>{
         assert(held,'범위 쓰기는 잠금 안에서만 실행');
+        if(this.name==='Cases'&&width>1&&failRefund){failRefund=false;throw Error('환불 필드 저장 실패 재현');}
         if(this.name==='PendingPayments'&&width>1&&failFinalize){failFinalize=false;throw Error('완료 기록 실패 재현');}
         values.forEach((line,i)=>line.forEach((v,j)=>{
           if(!this.data[row-1+i])this.data[row-1+i]=[];
@@ -62,7 +63,7 @@ function environment(){
   }
   function age(token){const sh=tables.get('PendingPayments'),row=sh.data.find(row=>row[0]===token);row[1]=new Date(Date.now()-25*3600000);}
   const cases=()=>tables.get('Cases').data.length-1;
-  return {ctx,props,tables,pending,paid,age,cases,applicant,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
+  return {ctx,props,tables,pending,paid,age,cases,applicant,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,failRefund:()=>failRefund=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
 }
 let checks=0;
 function test(name,fn){fn();checks++;console.log('통과: '+name);}
@@ -141,4 +142,69 @@ test('HTML 스크립트 구문·설정·웹훅 부재',()=>{
   assert(config.window.SITE_CONFIG.stripe.paymentLinkWithCharger.startsWith('PASTE_'));
   assert(!source.includes('handleStripeWebhook'));
 });
-console.log('총 '+checks+'개 결제 흐름 테스트 통과');
+test('환불 72시간 경계·제출상태·누락/미래 시각·이력 판별',()=>{
+  const e=environment(),now=Date.now();
+  e.ctx.Date=class extends Date{static now(){return now;}};
+  const check=(changes={})=>e.ctx.getRefundEligibility_({paidAt:new Date(now-72*3600000),status:'대기',...changes});
+  for(const status of ['대기','배정됨','방문예정','시공중','서류접수'])assert.equal(check({status}).eligible,true);
+  assert.equal(check({paidAt:new Date(now-72*3600000-1)}).eligible,false);
+  assert.equal(check({paidAt:new Date(now+1)}).reason,'결제일시 확인 필요');
+  assert.equal(check({paidAt:''}).reason,'결제일시 확인 필요');
+  assert.equal(check({paidAt:'날짜 오류'}).reason,'결제일시 확인 필요');
+  for(const status of ['제출','승인','거절','서류제출완료','정산완료'])assert.equal(check({status}).reason,'이미 신청서 제출됨');
+  assert.equal(check({status:'결과안내완료'}).eligible,false);
+  assert.equal(check({history:[{newStatus:'제출'}]}).reason,'이미 신청서 제출됨');
+  assert.equal(check({refunded:true}).reason,'이미 환불처리됨');
+});
+test('결제일시 최초 기록·재요청 보존·관리자 조회 전용',()=>{
+  const e=environment(),t=e.pending(),sid=e.paid(t);
+  e.ctx.verifyStripeSession(sid,t);
+  const sh=e.tables.get('Cases'),row=sh.data[1],m=e.ctx.map_(sh),date=row[m['결제일시']];
+  assert(date instanceof Date);e.ctx.verifyStripeSession(sid,t);assert.equal(row[m['결제일시']],date);
+  const admin=e.ctx.findCases_(row[m.CaseID],true)[0];assert.equal(admin.refundEligible.eligible,true);assert.equal(admin.refunded,false);
+  const contractor=e.ctx.contractorCaseObj_(row,m,[],{});
+  for(const key of ['paidAt','refundEligible','refunded','refundedAt','refundReason'])assert.equal(key in contractor,false);
+});
+test('환불 인증·사유·카드환불 확인·중복 방지·현재 업무상태 유지',()=>{
+  const e=environment(),t=e.pending();e.ctx.verifyStripeSession(e.paid(t),t);
+  const sh=e.tables.get('Cases'),m=e.ctx.map_(sh),id=sh.data[1][m.CaseID],auth={adminPassword:'검증용',cardRefundConfirmed:true};
+  assert.throws(()=>e.ctx.processRefund(id,'고객 요청',{}));
+  assert.throws(()=>e.ctx.processRefund(id,'',auth));
+  assert.throws(()=>e.ctx.processRefund(id,'고객 요청',{adminPassword:'검증용'}));
+  assert.equal(e.ctx.processRefund(id,'고객 취소 요청',auth).success,true);
+  assert.equal(sh.data[1][m['환불처리여부']],'예');
+  assert.equal(sh.data[1][m['환불사유']],'고객 취소 요청');assert.equal(sh.data[1][m['현재상태']],'대기');
+  assert.equal(e.ctx.processRefund(id,'다른 메모',auth).alreadyProcessed,true);
+  assert.equal(sh.data[1][m['환불사유']],'고객 취소 요청');
+  const hist=e.tables.get('StatusHistory').data.filter(row=>row[3]==='환불처리');
+  assert.equal(hist.length,1);assert.equal(hist[0][5],'대표님');
+});
+test('환불 불가 건 명시적 예외 확인·접두사 기록',()=>{
+  const e=environment(),t=e.pending();e.ctx.verifyStripeSession(e.paid(t),t);
+  const sh=e.tables.get('Cases'),m=e.ctx.map_(sh),id=sh.data[1][m.CaseID],auth={adminPassword:'검증용',cardRefundConfirmed:true};
+  sh.data[1][m['결제일시']]=new Date(Date.now()-4*86400000);
+  assert.equal(e.ctx.processRefund(id,'주말 취소 요청',auth).requiresOverride,true);
+  assert.notEqual(sh.data[1][m['환불처리여부']],'예');
+  e.ctx.processRefund(id,'주말 취소 요청',{...auth,forceRefund:true});
+  assert.equal(sh.data[1][m['환불사유']],'[예외처리] 주말 취소 요청');
+});
+test('환불 기록 부분 실패 후 최초 이력으로 복구',()=>{
+  const e=environment(),t=e.pending();e.ctx.verifyStripeSession(e.paid(t),t);
+  const sh=e.tables.get('Cases'),m=e.ctx.map_(sh),id=sh.data[1][m.CaseID],auth={adminPassword:'검증용',cardRefundConfirmed:true};
+  e.failRefund();assert.throws(()=>e.ctx.processRefund(id,'최초 사유',auth));
+  assert.notEqual(sh.data[1][m['환불처리여부']],'예');
+  assert.equal(e.ctx.processRefund(id,'재시도 사유',auth).success,true);
+  assert.equal(sh.data[1][m['환불사유']],'최초 사유');
+  assert.equal(e.tables.get('StatusHistory').data.filter(row=>row[3]==='환불처리').length,1);
+});
+test('환불 UI 배지·완료건 버튼 숨김·문자열 이스케이프',()=>{
+  const html=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+  const code=html.slice(html.indexOf('function refundSection(c)'),html.indexOf("$('#reviewResults').addEventListener('click'",html.indexOf('function refundSection(c)')));
+  const ctx=vm.createContext({esc:v=>String(v??'').replace(/</g,'&lt;').replace(/>/g,'&gt;')});
+  vm.runInContext(code,ctx);
+  assert(ctx.refundSection({refundEligible:{eligible:true}}).includes('refund-yes'));
+  assert(ctx.refundSection({refundEligible:{eligible:false,reason:'3영업일 경과'}}).includes('환불 불가'));
+  const done=ctx.refundSection({refunded:true,refundedAt:'2026-09-18',refundReason:'<script>'});
+  assert(done.includes('환불완료 (2026-09-18)'));assert(!done.includes('<button'));assert(done.includes('&lt;script&gt;'));
+});
+console.log('총 '+checks+'개 결제·환불 흐름 테스트 통과');
