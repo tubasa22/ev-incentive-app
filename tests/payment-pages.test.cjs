@@ -47,7 +47,7 @@ async function successPage(responses,search='?session_id=cs_test_123'){
 (async()=>{
   await intake(false);console.log('통과: 플레이스홀더는 임시 저장·결제 이동 없이 안내');
   await intake(true);console.log('통과: 동의 데이터·가격 유형 전송 및 client_reference_id 연결');
-  let p=await successPage([{success:true,status:'완료'}]);assert.equal(p.calls[0].token,'');assert(p.get('#heading').textContent.includes('접수가 완료'));assert(p.get('#message').textContent.includes('예정'));assert.equal(p.get('#retry').hidden,true);
+  let p=await successPage([{success:true,status:'완료',payment:{priceType:'chargerOnly',name:'충전기·전기패널 업그레이드 지원만',amount:149}}]);assert.equal(p.calls[0].token,'');assert(p.get('#heading').textContent.includes('접수가 완료'));assert(p.get('#message').textContent.includes('예정'));assert.equal(p.get('#retry').hidden,true);assert.equal(p.get('#paymentSummary').textContent,'결제하신 서비스: 충전기·전기패널 업그레이드 지원만 ($149)');assert.equal(p.get('#paymentSummary').hidden,false);
   console.log('통과: 세션ID만으로 서버 검증 요청·접수 완료·메일 대기 안내');
   p=await successPage([{success:false,pending:true}]);assert.equal(p.now,20000);assert.equal(p.calls.length,7);assert.equal(p.get('#retry').hidden,false);assert.equal(p.get('#heading').textContent,'결제 확인 중입니다');
   console.log('통과: 3초 간격 확인·20초 제한·재시도 안내');

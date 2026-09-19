@@ -242,4 +242,28 @@ test('기존 withCharger 대기 결제는 $199 확인 유지·신규 생성은 �
   assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:19900}),t).success,true);
   assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,serviceType:'withCharger'},{results:[]},'withCharger'));
 });
+test('결제 요약은 저장된 유형·금액만 사용하고 검증 응답에 포함',()=>{
+  const e=environment(),t=e.pending(),sid=e.paid(t);
+  const result=e.ctx.verifyStripeSession(sid,t);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.payment)),{priceType:'vehicleOnly',name:'차량 교체/구매 지원만',amount:99});
+  assert.equal(e.ctx.paymentSummary_({servicePricingType:'bundle',serviceFee:199}).name,'차량 및 충전기·전기패널 업그레이드 지원');
+  assert.equal(e.ctx.paymentSummary_({servicePricingType:'chargerOnly'}),null);
+  assert.equal(e.ctx.paymentSummary_({servicePricingType:'unknown',serviceFee:149}),null);
+});
+test('접수확인 이메일에 실제 유형·금액과 기존 절차 안내 유지',()=>{
+  const e=environment(),sent=[];
+  e.ctx.MailApp={sendEmail:mail=>sent.push(mail)};
+  for(const [type,amount,label] of [['vehicleOnly',99,'차량 교체/구매 지원만'],['chargerOnly',149,'충전기·전기패널 업그레이드 지원만'],['bundle',199,'차량 및 충전기·전기패널 업그레이드 지원']]){
+    e.ctx.sendConfirmationEmail_({...e.applicant,servicePricingType:type,serviceFee:amount},'EV-TEST');
+    const mail=sent.pop(),line='결제하신 서비스: '+label+' ($'+amount+')';
+    assert(mail.body.includes(line));assert(mail.htmlBody.includes(line));
+    for(const phrase of ['1. 1차 검토','2. 서류 준비 및 제출','3. 프로그램 심사 및 승인']){assert(mail.body.includes(phrase));assert(mail.htmlBody.includes(phrase));}
+  }
+  const legacyApplicant={...e.applicant};
+  delete legacyApplicant.serviceType;
+  delete legacyApplicant.servicePricingType;
+  delete legacyApplicant.serviceFee;
+  e.ctx.sendConfirmationEmail_(legacyApplicant,'EV-OLD');
+  assert(sent.pop().body.includes('결제 유형·금액 기록 확인 필요'));
+});
 console.log('총 '+checks+'개 결제·환불·신청 검증 테스트 통과');

@@ -23,6 +23,7 @@
   <main><section aria-live="polite" aria-busy="true" id="paymentPanel">
     <h1 id="heading">결제를 확인하고 있습니다</h1>
     <p id="message">결제 정보 확인 후 신청이 자동으로 접수됩니다. 잠시만 기다려주세요.</p>
+    <p id="paymentSummary" hidden></p>
     <button type="button" id="retry" hidden>결제 확인 다시 시도</button>
     <p>문의: <a id="contact"></a></p>
     <a href="landing.html">처음으로 돌아가기</a>
@@ -59,6 +60,9 @@
             throw Error('서버에 연결할 수 없습니다. 인터넷 연결을 확인한 후 다시 시도해주세요.');
           }finally{clearTimeout(timer);}
           if(result.success&&result.status==='완료'){
+            const summary=document.querySelector('#paymentSummary'),payment=result.payment;
+            summary.textContent=payment&&payment.name&&Number.isFinite(payment.amount)?'결제하신 서비스: '+payment.name+' ($'+payment.amount+')':'결제 유형·금액 기록은 관리자에게 문의해주세요.';
+            summary.hidden=false;
             display('접수가 완료되었습니다!','확인 이메일을 보내드릴 예정입니다. 입력하신 정보를 검토한 후 영업일 기준 1~2일 내로 전화 또는 이메일로 연락드리겠습니다.');
             return;
           }

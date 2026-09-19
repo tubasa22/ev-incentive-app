@@ -26,7 +26,7 @@ assert.equal(ctx.matchPrograms({...applicant,serviceType:'vehicleOnly',wantsChar
 const empty=ctx.matchPrograms({...applicant,income:'9999999',vehicleOwned:'no',hasEV:'yes',serviceType:'vehicleOnly',wantsCharger:'no'});
 assert.equal(empty.vehiclePrograms.length+empty.chargerPrograms.length,0);assert.equal(empty.mutuallyExclusiveWarning,null);
 console.log('통과: 두 그룹 정렬·복합 희망사항·상호배타·활성 상태·CALeVIP 주의');
-const renderer=admin.slice(admin.indexOf('function renderMatchingGroups(c)'),admin.indexOf('function money(v)'));
+const renderer=admin.slice(admin.indexOf('function paymentSummaryText(c)'),admin.indexOf('function money(v)'));
 const renderCtx=vm.createContext({esc:x=>String(x??'').replace(/</g,'&lt;'),money:x=>'$'+x});
 vm.runInContext(renderer,renderCtx);
 const rendered=renderCtx.renderMatchingGroups({matchingResult:off});
@@ -34,6 +34,8 @@ assert(rendered.includes('차량 프로그램'));assert(rendered.includes('충�
 assert(rendered.includes('1순위'));assert(rendered.includes('현재 신청 일시중단'));assert(rendered.includes('이 중 하나만 신청 가능합니다'));
 assert(renderCtx.renderMatchingGroups({matchingResult:empty}).includes('해당 가능한 프로그램이 없습니다'));
 assert(renderCtx.renderMatchingGroups({matchingResult:{results:result.vehiclePrograms}}).includes('1순위'));
+assert.equal(renderCtx.paymentSummaryText({applicant:{servicePricingType:'vehicleOnly',serviceFee:99}}),'<p><strong>결제하신 서비스: 차량 교체/구매 지원만 ($99)</strong></p>');
+assert(renderCtx.paymentSummaryText({applicant:{servicePricingType:'chargerOnly'}}).includes('기록 확인 필요'));
 console.log('통과: 관리자 그룹·순위·경고·비활성 배지 및 구버전 결과 호환');
 const errors=new Map();
 const validationCtx=vm.createContext({document:{
