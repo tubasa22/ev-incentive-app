@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'apps-script/Code.gs'),'utf8');
 function environment(){
   const tables=new Map(),props={STRIPE_SECRET_KEY:'sk_test_검증용',ADMIN_PASSWORD:'검증용'};
-  let held=false,lockCount=0,session={},apiCode=200,failHistory=false,failFinalize=false,failRefund=false;
+  let held=false,lockCount=0,session={},apiCode=200,failHistory=false,failFinalize=false,failRefund=false;const mails=[];
   class Sheet{
     constructor(name){this.name=name;this.data=[];}
     appendRow(row){
@@ -44,6 +44,7 @@ function environment(){
     Utilities:{getUuid:()=>crypto.randomUUID(),formatDate:()=>String(Date.now())},
     Session:{getScriptTimeZone:()=>'UTC'},
     Logger:{log:()=>{}},
+    MailApp:{sendEmail:message=>mails.push(message)},
     ContentService:{MimeType:{JSON:'json'},createTextOutput:text=>({setMimeType:()=>JSON.parse(text)})},
     UrlFetchApp:{fetch:(url,options)=>{
       assert(url.startsWith('https://api.stripe.com/v1/checkout/sessions/cs_test_'));
@@ -63,7 +64,7 @@ function environment(){
   }
   function age(token){const sh=tables.get('PendingPayments'),row=sh.data.find(row=>row[0]===token);row[1]=new Date(Date.now()-25*3600000);}
   const cases=()=>tables.get('Cases').data.length-1;
-  return {ctx,props,tables,pending,paid,age,cases,applicant,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,failRefund:()=>failRefund=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
+  return {ctx,props,tables,pending,paid,age,cases,applicant,mails,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,failRefund:()=>failRefund=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
 }
 let checks=0;
 function test(name,fn){fn();checks++;console.log('통과: '+name);}
@@ -90,6 +91,15 @@ test('공개 createCase 우회 차단',()=>{
   const e=environment();
   assert.equal(e.ctx.doPost({postData:{contents:JSON.stringify({action:'createCase',applicant:e.applicant})}}).success,false);
   assert.equal(e.cases(),0);
+});
+test('무료 자격확인 리드·이메일·결제 후 전환 분리',()=>{
+  const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
+  const checked=e.ctx.submitEligibilityCheck(applicant);assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
+  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(!e.mails[0].body.includes('$'));
+  const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'vehicleOnly');
+  const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'vehicleOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
+  assert.equal(e.cases(),0);const sid=e.paid(pending.token);assert.equal(e.ctx.verifyStripeSession(sid,pending.token).success,true);assert.equal(e.cases(),1);
+  assert.equal(e.ctx.getLeadForContinue(checked.leadId).error,'이미 처리된 신청입니다');
 });
 test('정상 결제·토큰 복원·반복 호출·메일 대기',()=>{
   const e=environment(),t=e.pending(),id=e.paid(t);

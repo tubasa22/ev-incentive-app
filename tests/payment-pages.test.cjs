@@ -11,22 +11,24 @@ async function intake(ready){
   const nodes=new Map(),get=s=>{if(!nodes.has(s))nodes.set(s,element());return nodes.get(s);};
   let sent=[],redirect='';
   const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}};
-  const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,
+  const pageLocation={search:'?leadId=LEAD-test',assign:url=>redirect=url};
+  const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,location:pageLocation,
     document:{querySelector:get,querySelectorAll:s=>s==='.step'?[element()]:[]},
     FormData:class{*[Symbol.iterator](){yield* Object.entries({name:'테스트',phone:'123',email:'test@example.com',wantsCharger:'no',income:'10000',household:'1',zip:'90001',purchaseType:'new'});}},
     alert:message=>{throw Error(message);},
     fetch:async(url,options)=>{if(!options)return {json:async()=>({success:true,statuses:{}})};
       sent.push(JSON.parse(options.body));return {json:async()=>({success:true,token:'PAY-'+'a'.repeat(32)})};},
-    window:{SITE_CONFIG:config,location:{assign:url=>redirect=url}}
-  });ctx.window.fetch=ctx.fetch;vm.runInContext(inline('index.html'),ctx);
+    window:{SITE_CONFIG:config,location:pageLocation}
+  });ctx.window.fetch=ctx.fetch;vm.runInContext(inline('index.html'),ctx);vm.runInContext("continuedApplicant={name:'테스트',phone:'123',email:'test@example.com'}",ctx);
   get('#applicationConsent').checked=true;get('#consentSignature').value='테스트';
   get('[name="serviceType"]:checked').value='vehicleOnly';
   await get('#form').onsubmit({preventDefault(){},target:get('#form')});
   if(ready){
     assert.equal(sent.length,1);assert.equal(sent[0].action,'createPendingPayment');
     assert.equal(sent[0].priceType,'vehicleOnly');
+    assert.equal(sent[0].leadId,'LEAD-test');
     const url=new URL(redirect);assert.equal(url.searchParams.get('client_reference_id'),'PAY-'+'a'.repeat(32));assert.equal(url.searchParams.get('locale'),'ko');
-    assert.equal(sent[0].applicantData.applicationConsent,'예');
+    assert.equal(sent[0].consentData.applicationConsent,'예');
   }else{assert.equal(sent.length,0);assert.equal(redirect,'');assert(get('#results').innerHTML.includes('아직 준비되지 않았습니다'));}
 }
 async function successPage(responses,search='?session_id=cs_test_123'){
