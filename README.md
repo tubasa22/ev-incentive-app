@@ -139,6 +139,8 @@ CC4A/DCAP는 2024-25 Funding Plan 기준으로 FPL 300% 이하를 판정하고 �
 
 매칭엔진에는 SCE Charge Ready Home, SCE/LADWP 중고 EV 리베이트, LADWP 충전기 추가지원과 South Coast AQMD 주거용 충전 리베이트 기준이 구조화되어 있습니다. DAC는 자동 조회하지 않으며 관리자 케이스 상세에서 SB 535 지도를 열고 주소/ZIP을 복사한 뒤 `DAC 해당`·`DAC 미해당`·`미확인`으로 저장합니다. DCAP Financing Assistance는 2026-08-21 기준 신규 신청 중단 안내를 표시합니다.
 
+LADWP 관할의 충전기·번들 신청에는 리베이트를 사업체가 직접 수령하도록 제3자 지급대상을 지정할 수 있다는 안내가 표시됩니다. 관리자 케이스 상세에서는 해당 옵션의 안내 완료 여부를 체크해 Cases의 `LADWP제3자지정안내여부`에 기록합니다.
+
 ## 기능 목록
 
 - [x] LA·OC·사우스베이 중심 주력 프로그램 우선순위와 DCAP/CALeVIP 후순위 표시

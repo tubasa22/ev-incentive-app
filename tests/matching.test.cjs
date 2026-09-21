@@ -19,6 +19,7 @@ vm.runInContext(html.slice(html.indexOf('const CONFIG='),html.indexOf('function 
 const applicant={income:'10000',household:'2',zip:'90001',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',serviceType:'bundle',wantsCharger:'yes'};
 const result=ctx.matchPrograms(applicant);
 assert.equal(result.vehiclePrograms.length,3);assert.equal(result.chargerPrograms.length,3);assert(!result.vehiclePrograms.some(p=>p.id==='DCAP'));
+const ladwp=result.chargerPrograms.find(p=>p.id==='LADWP_CHARGER');assert.equal(ladwp.thirdPartyAssignment,true);assert(ladwp.thirdPartyAssignmentNote.includes('제3자 지급대상'));assert.equal(ladwp.applicationWindowChargerDays,null);assert.equal(ladwp.usedVehicleWindowDays,365);
 assert(result.vehiclePrograms.every((p,i,list)=>i===0||list[i-1].amount>=p.amount));assert.equal(result.chargerPrograms.at(-1).id,'CALeVIP');
 assert.equal(result.mutuallyExclusiveWarning,'이 중 하나만 신청 가능합니다');
 assert(result.chargerPrograms.find(p=>p.id==='CALeVIP').applicabilityNote.includes('개인고객은 보통 해당없음'));
@@ -81,7 +82,8 @@ assert.equal(vm.runInContext('JSON.stringify({fpl:CONFIG.fpl,zipMap:CONFIG.zipMa
 assert.equal(JSON.stringify(vm.runInContext('CC4A_RULES',ctx)),JSON.stringify(backend.CC4A_RULES));
 assert.equal(JSON.stringify(vm.runInContext('UTILITY_RULES',ctx)),JSON.stringify(backend.UTILITY_RULES));
 assert.equal(JSON.stringify(vm.runInContext('SCAQMD_EV_CHARGING',ctx)),JSON.stringify(backend.SCAQMD_EV_CHARGING));
-assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));
+assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));assert(backend.CASE_HEADERS.includes('LADWP제3자지정안내여부'));
+assert(html.includes('ladwpAssignmentNotice'));assert(html.includes('고객님이 부담하시는 실질 비용이 줄어듭니다'));assert(admin.includes('제3자 지급 지정 가능'));assert(admin.includes('setLadwpThirdPartyGuidance'));
 const statuses={RYR:'아니오',CC4A:'예',DCAP:'예',MyFirstEV:'예',CALeVIP:'예',유틸리티리베이트:'아니오'};
 for(const serviceType of ['vehicleOnly','chargerOnly','bundle']){
   const d={...applicant,serviceType};
