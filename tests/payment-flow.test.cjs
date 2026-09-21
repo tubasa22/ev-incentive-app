@@ -53,7 +53,7 @@ function environment(){
   });
   vm.runInContext(source,ctx);
   ctx.withLock_(()=>ctx.sheets_());
-  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',housing:'자가',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',serviceType:'vehicleOnly',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
+  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',housing:'자가',residenceType:'단독주택',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',serviceType:'vehicleOnly',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
   function pending(charger=false){
     return ctx.createPendingPayment({...applicant,serviceType:charger?'bundle':'vehicleOnly',wantsCharger:charger?'yes':'no'},{results:[]},charger?'bundle':'vehicleOnly').token;
   }
@@ -288,5 +288,15 @@ test('딜러 관리자 UI와 API 라우팅은 관리자 화면에만 존재',()=
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8'),contractor=fs.readFileSync(path.join(root,'contractor.html'),'utf8'),index=fs.readFileSync(path.join(root,'index.html'),'utf8');
   for(const text of ['딜러 제휴','딜러 소개비 관리','referCaseToDealer','recordDealerReferralFee'])assert(admin.includes(text));
   assert(!contractor.includes('딜러 소개비'));assert(!index.includes('딜러 소개비'));
+});
+test('LADWP 8단계는 배정 컨트랙터만 순서대로 기록',()=>{
+  const e=environment(),contractors=e.tables.get('Contractors'),cm=e.ctx.map_(contractors),contractorRow=Array(contractors.getLastColumn()).fill('');
+  contractorRow[cm['컨트랙터ID']]='CTR-1';contractorRow[cm['액세스코드']]='1234';contractorRow[cm['활성여부']]='예';e.ctx.withLock_(()=>contractors.appendRow(contractorRow));
+  const applicant={...e.applicant,serviceType:'bundle',wantsCharger:'yes',residenceType:'다세대주택'},created=e.ctx.createCase_({applicant,matchingResult:{vehiclePrograms:[],chargerPrograms:[{id:'LADWP_CHARGER'}]},paymentConfirmed:true});
+  const cases=e.tables.get('Cases'),m=e.ctx.map_(cases),row=cases.data[1];e.ctx.withLock_(()=>cases.getRange(2,m['컨트랙터ID']+1).setValue('CTR-1'));
+  assert.throws(()=>e.ctx.updateLadwpStep(created.caseId,'CTR-2','1234',1));assert.throws(()=>e.ctx.updateLadwpStep(created.caseId,'CTR-1','1234',2));
+  assert.equal(e.ctx.updateLadwpStep(created.caseId,'CTR-1','1234',1).step,1);assert.equal(row[m['LADWP절차단계']],1);
+  assert(e.tables.get('StatusHistory').data.at(-1)[4].includes('LADWP 1단계: 딜러 상담 완료'));
+  const portal=e.ctx.getCasesForContractor('CTR-1','1234')[0];assert.equal(portal.isLadwpInstall,true);assert.equal(portal.ladwpStep,1);assert.equal(portal.address.residenceType,'다세대주택');assert.equal('income' in portal,false);
 });
 console.log('총 '+checks+'개 결제·환불·신청 검증 테스트 통과');

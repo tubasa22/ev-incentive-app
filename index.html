@@ -78,6 +78,7 @@ function valid(all=false){
 }$$('[data-next]').forEach(b=>b.onclick=()=>valid()&&moveStep(1));$$('[data-prev]').forEach(b=>b.onclick=()=>moveStep(-1));
 $('#consentBox').insertAdjacentHTML?.('beforeend','<div id="ladwpConsentClause" hidden><h3>6. LADWP 제3자 지급 지정 안내</h3><p>LADWP 충전기 리베이트 대상인 경우 고객은 신청서에서 대표님 사업체를 제3자 지급대상으로 지정할 수 있습니다. 지급 전까지 철회할 수 있고 프로그램 요건 충족 책임은 고객에게 남습니다.</p></div>');
 $('#consentBox').insertAdjacentHTML?.('afterend','<p id="ladwpAssignmentNotice" class="notice" hidden>충전기 설치를 진행하시면, 리베이트를 저희 사업체가 직접 수령하도록 지정하는 방식을 안내해드릴 수 있습니다. 이 경우 고객님이 부담하시는 실질 비용이 줄어듭니다.</p>');
+const housingLabel=$('[name="housing"]').closest('label');housingLabel.insertAdjacentHTML?.('afterend','<label id="residenceTypeField" hidden>주거형태<select name="residenceType"><option value="">선택</option><option value="단독주택">단독주택</option><option value="다세대주택">다세대주택(아파트·콘도)</option></select><small id="field-error-residenceType" class="field-error" aria-live="polite"></small></label>');
 let consentCompletedAt='';function selectedServicePrice(){const key=$('[name="serviceType"]:checked')?.value||'';const names={vehicleOnly:'차량 프로그램만',chargerOnly:'충전기·전기패널 업그레이드만',bundle:'차량 및 충전기·전기패널 함께'};return {key,amount:CONFIG.pricing[key],type:names[key]||'서비스를 선택해주세요.'}}function updateConsentPrice(){
   const price=selectedServicePrice(),construction=['chargerOnly','bundle'].includes(price.key);
   $('#servicePrice').textContent=price.key?price.type+' 신청 대행 이용료: $'+price.amount+(construction?' · 실제 시공 시 이용료 전액 차감':' · 차량 전용은 시공비 차감 대상이 아닙니다.'):'서비스를 먼저 선택해주세요.';
@@ -96,6 +97,8 @@ function resetPriceConsent(){
 }
 function syncServiceFields(){
   const only=selectedServicePrice().key==='chargerOnly',vehicle=$('#vehicleStep');
+  const includesCharger=['chargerOnly','bundle'].includes(selectedServicePrice().key),residence=$('[name="residenceType"]'),residenceWrap=$('#residenceTypeField');
+  residenceWrap.hidden=!includesCharger;residence.disabled=!includesCharger;residence.required=includesCharger;if(!includesCharger)residence.value='';
   vehicle.hidden=only;
   vehicle.querySelectorAll('input,select').forEach(field=>{
     field.disabled=only;

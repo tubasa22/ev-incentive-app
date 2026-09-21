@@ -3,6 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+const contractor=fs.readFileSync(path.join(root,'contractor.html'),'utf8');
 const about=fs.readFileSync(path.join(root,'about.html'),'utf8');
 const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
 const required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied'];
@@ -82,8 +83,10 @@ assert.equal(vm.runInContext('JSON.stringify({fpl:CONFIG.fpl,zipMap:CONFIG.zipMa
 assert.equal(JSON.stringify(vm.runInContext('CC4A_RULES',ctx)),JSON.stringify(backend.CC4A_RULES));
 assert.equal(JSON.stringify(vm.runInContext('UTILITY_RULES',ctx)),JSON.stringify(backend.UTILITY_RULES));
 assert.equal(JSON.stringify(vm.runInContext('SCAQMD_EV_CHARGING',ctx)),JSON.stringify(backend.SCAQMD_EV_CHARGING));
-assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));assert(backend.CASE_HEADERS.includes('LADWP제3자지정안내여부'));
+assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));assert(backend.CASE_HEADERS.includes('LADWP제3자지정안내여부'));assert(backend.CASE_HEADERS.includes('LADWP절차단계'));
 assert(html.includes('ladwpAssignmentNotice'));assert(html.includes('고객님이 부담하시는 실질 비용이 줄어듭니다'));assert(admin.includes('제3자 지급 지정 가능'));assert(admin.includes('setLadwpThirdPartyGuidance'));
+assert.equal(backend.getLadwpSteps().length,8);assert(backend.getLadwpSteps()[3].desc.includes('전기허가 취득 전에 반드시 먼저 제출'));
+assert(html.includes('name="residenceType"'));assert(html.includes('다세대주택(아파트·콘도)'));assert(contractor.includes('updateLadwpStep'));assert(contractor.includes('다세대주택 참고'));assert(contractor.includes('온라인 신청서(4단계)'));assert(admin.includes('8단계 중'));
 const statuses={RYR:'아니오',CC4A:'예',DCAP:'예',MyFirstEV:'예',CALeVIP:'예',유틸리티리베이트:'아니오'};
 for(const serviceType of ['vehicleOnly','chargerOnly','bundle']){
   const d={...applicant,serviceType};
