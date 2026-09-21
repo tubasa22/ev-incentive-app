@@ -219,7 +219,7 @@ test('새 필수 입력 서버 검증과 그룹 결과 Cases 저장',()=>{
   assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,true);
   const sh=e.tables.get('Cases'),m=e.ctx.map_(sh);
   const saved=JSON.parse(sh.data[1][m['매칭결과JSON']]);
-  assert(saved.vehiclePrograms.some(p=>p.id==='DCAP'));
+  assert(!saved.vehiclePrograms.some(p=>p.id==='DCAP')); // South Coast AQMD 관할은 DCAP 대체 후보 제외
   assert(!saved.vehiclePrograms.some(p=>p.reason==='대상')); // 클라이언트가 보낸 결과가 아니라 서버 계산
   assert.deepEqual(JSON.parse(sh.data[1][m['매칭프로그램목록(JSON)']]),saved.vehiclePrograms.concat(saved.chargerPrograms));
 });
@@ -230,7 +230,7 @@ test('충전기만 $149·차량 입력 제거·서버 매칭·가격 위변조 �
   const row=e.tables.get('PendingPayments').data[1],stored=JSON.parse(row[6]),matching=JSON.parse(row[7]);
   assert.equal(row[3],149);assert.equal(stored.serviceFee,149);assert.equal(stored.purchaseType,'charger');
   assert.equal(stored.vehicleYear,undefined);assert.equal(matching.vehiclePrograms.length,0);
-  assert.equal(matching.chargerPrograms.length,1);assert.equal(matching.chargerPrograms[0].id,'Utility');
+  assert.equal(matching.chargerPrograms.length,2);assert(matching.chargerPrograms.some(p=>p.id==='LADWP_CHARGER'));assert(matching.chargerPrograms.some(p=>p.id==='SCAQMD_EV_CHARGING'));
   assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,false);
   assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:14900}),t).success,true);
   assert.throws(()=>e.ctx.createPendingPayment(a,{results:[]},'bundle'));

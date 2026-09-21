@@ -3,6 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+const about=fs.readFileSync(path.join(root,'about.html'),'utf8');
 const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
 const required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied'];
 for(const name of required){
@@ -17,24 +18,30 @@ const ctx=vm.createContext({SITE_CONFIG:config.window.SITE_CONFIG,window:{},cons
 vm.runInContext(html.slice(html.indexOf('const CONFIG='),html.indexOf('function show(')),ctx);
 const applicant={income:'10000',household:'2',zip:'90001',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',serviceType:'bundle',wantsCharger:'yes'};
 const result=ctx.matchPrograms(applicant);
-assert.equal(result.vehiclePrograms.length,4);assert.equal(result.chargerPrograms.length,2);
-for(const list of [result.vehiclePrograms,result.chargerPrograms])assert(list.every((p,i)=>i===0||list[i-1].amount>=p.amount));
+assert.equal(result.vehiclePrograms.length,3);assert.equal(result.chargerPrograms.length,3);assert(!result.vehiclePrograms.some(p=>p.id==='DCAP'));
+assert(result.vehiclePrograms.every((p,i,list)=>i===0||list[i-1].amount>=p.amount));assert.equal(result.chargerPrograms.at(-1).id,'CALeVIP');
 assert.equal(result.mutuallyExclusiveWarning,'이 중 하나만 신청 가능합니다');
 assert(result.chargerPrograms.find(p=>p.id==='CALeVIP').applicabilityNote.includes('개인고객은 보통 해당없음'));
 assert.equal(applicant.purchaseType,'new');
 vm.runInContext("liveProgramStatuses.RYR='아니오';liveProgramStatuses.유틸리티리베이트='아니오';",ctx);
-const off=ctx.matchPrograms(applicant);assert.equal(off.vehiclePrograms.find(p=>p.id==='RYR').isActive,false);assert.equal(off.chargerPrograms.find(p=>p.id==='Utility').isActive,false);
+const off=ctx.matchPrograms(applicant);assert.equal(off.vehiclePrograms.find(p=>p.id==='RYR').isActive,false);assert.equal(off.chargerPrograms.find(p=>p.id==='LADWP_CHARGER').isActive,false);
 assert.equal(ctx.matchPrograms({...applicant,serviceType:'vehicleOnly',wantsCharger:'no'}).chargerPrograms.length,0);
 const cc4a=ctx.matchPrograms({...applicant,desiredVehicle:'phev'}).vehiclePrograms.find(p=>p.id==='CC4A');
 assert.equal(cc4a.amount,9500);assert.equal(cc4a.vehicleType,'phev');assert.equal(cc4a.chargingIncentiveMax,2000);
 assert(cc4a.referenceNotes.some(note=>note.includes('CalEnviroScreen')));assert(cc4a.referenceNotes.some(note=>note.includes('관할 air district')));assert(cc4a.referenceNotes.some(note=>note.includes('유틸리티 리베이트와 별도')));
-const conditional=ctx.matchPrograms({...applicant,vehicleOwned:'no',desiredVehicle:''}).vehiclePrograms.filter(p=>['CC4A','DCAP'].includes(p.id));
-assert.equal(conditional.length,2);assert(conditional.every(p=>p.eligibility==='조건부 가능'&&p.amount===10000&&p.reason.includes('DCAP 금융지원 대안')));
+const conditional=ctx.matchPrograms({...applicant,zip:'95001',vehicleOwned:'no',desiredVehicle:''}).vehiclePrograms.filter(p=>['CC4A','DCAP'].includes(p.id));
+assert.equal(conditional.length,2);assert(conditional.every(p=>p.eligibility==='확인 필요(현재 대안 경로 제한적)'&&p.amount===10000&&p.reason.includes('대안 경로 확인 필요')));
 assert.equal(conditional.find(p=>p.id==='DCAP').administrator,'CHDC');
+const ambiguous=ctx.matchPrograms({...applicant,zip:'99999'}).vehiclePrograms.find(p=>p.id==='DCAP');assert(ambiguous.referenceNotes.some(note=>note.includes('관할 확인 필요')));
 assert.equal(ctx.matchPrograms({...applicant,income:'65000'}).vehiclePrograms.some(p=>['CC4A','DCAP'].includes(p.id)),false);
 const empty=ctx.matchPrograms({...applicant,income:'9999999',vehicleOwned:'no',hasEV:'yes',serviceType:'vehicleOnly',wantsCharger:'no'});
 assert.equal(empty.vehiclePrograms.length+empty.chargerPrograms.length,0);assert.equal(empty.mutuallyExclusiveWarning,null);
 console.log('통과: 두 그룹 정렬·복합 희망사항·상호배타·활성 상태·CALeVIP 주의');
+const summaries=[...about.matchAll(/<details><summary>([^<]+)/g)].map(match=>match[1]);
+assert.deepEqual(summaries,['RYR (Replace Your Ride)','CC4A (Clean Cars 4 All)','MyFirstEV','유틸리티 충전기 리베이트','CALeVIP (California EV Infrastructure Project)']);
+assert.equal((about.match(/South Coast AQMD 관할 밖 지역은 DCAP으로 대체 신청 가능\(문의 시 안내\)/g)||[]).length,2);
+assert(about.includes('SCE(Southern California Edison) 또는 LADWP 관할입니다'));
+console.log('통과: 서비스 지역 중심 프로그램 소개 순서·DCAP 축소·유틸리티 강조');
 const renderer=admin.slice(admin.indexOf('function paymentSummaryText(c)'),admin.indexOf('function money(v)'));
 const renderCtx=vm.createContext({esc:x=>String(x??'').replace(/</g,'&lt;'),money:x=>'$'+x,dealers:[]});
 vm.runInContext(renderer,renderCtx);
@@ -72,6 +79,9 @@ const backend=vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root,'apps-script/Code.gs'),'utf8'),backend);
 assert.equal(vm.runInContext('JSON.stringify({fpl:CONFIG.fpl,zipMap:CONFIG.zipMap,programs:CONFIG.programs})',ctx),JSON.stringify(backend.MATCH_CONFIG));
 assert.equal(JSON.stringify(vm.runInContext('CC4A_RULES',ctx)),JSON.stringify(backend.CC4A_RULES));
+assert.equal(JSON.stringify(vm.runInContext('UTILITY_RULES',ctx)),JSON.stringify(backend.UTILITY_RULES));
+assert.equal(JSON.stringify(vm.runInContext('SCAQMD_EV_CHARGING',ctx)),JSON.stringify(backend.SCAQMD_EV_CHARGING));
+assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));
 const statuses={RYR:'아니오',CC4A:'예',DCAP:'예',MyFirstEV:'예',CALeVIP:'예',유틸리티리베이트:'아니오'};
 for(const serviceType of ['vehicleOnly','chargerOnly','bundle']){
   const d={...applicant,serviceType};
@@ -79,7 +89,7 @@ for(const serviceType of ['vehicleOnly','chargerOnly','bundle']){
 }
 const only=ctx.matchPrograms({...applicant,serviceType:'chargerOnly'});
 assert.equal(only.vehiclePrograms.length,0);
-assert.equal(only.chargerPrograms.length,1);assert.equal(only.chargerPrograms[0].id,'Utility');
+assert.equal(only.chargerPrograms.length,2);assert(only.chargerPrograms.some(p=>p.id==='LADWP_CHARGER'));assert(only.chargerPrograms.some(p=>p.id==='SCAQMD_EV_CHARGING'));
 assert.equal(only.mutuallyExclusiveWarning,null);
 assert(renderCtx.renderMatchingGroups({applicant:{servicePricingType:'chargerOnly'},matchingResult:only}).includes('차량 프로그램: 해당없음(신청 안 함)'));
 console.log('통과: 3가지 서비스 브라우저/서버 판정 일치 및 충전기 전용 관리자 표시');
