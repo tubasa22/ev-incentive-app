@@ -324,6 +324,15 @@ test('관리자 케이스 검색은 버튼 또는 IME 조합 완료 후 Enter에
   assert(admin.includes('id="reviewQuery" type="text"'));assert(admin.includes("addEventListener('compositionstart'"));assert(admin.includes("addEventListener('compositionend'"));
   assert(admin.includes("event.key==='Enter'&&!event.isComposing&&!reviewQueryComposing"));assert(!admin.includes("$('#reviewQuery').onkeydown"));
 });
+test('관리자 케이스 검토는 최신순 페이지와 검색·상태필터·TEST 배지를 제공',()=>{
+  const e=environment(),auth={adminPassword:'검증용'},created=[];
+  for(let i=0;i<3;i++)created.push(e.ctx.createCase_({applicant:{...e.applicant,name:'신청자'+i},matchingResult:{vehiclePrograms:[],chargerPrograms:[]},paymentConfirmed:true,testMode:i===1}).caseId);
+  const sh=e.tables.get('Cases'),m=e.ctx.map_(sh);sh.data[1][m['최종수정일시']]=new Date('2026-01-01');sh.data[2][m['최종수정일시']]=new Date('2026-03-01');sh.data[3][m['최종수정일시']]=new Date('2026-02-01');
+  assert.throws(()=>e.ctx.getRecentCases(30,0,{}));
+  const first=e.ctx.getRecentCases(2,0,auth),second=e.ctx.getRecentCases(2,2,auth);assert.deepEqual(first.map(c=>c.caseId),[created[1],created[2]]);assert.deepEqual(second.map(c=>c.caseId),[created[0]]);assert.equal(first[0].testPayment,true);assert(first[0].matchingResult);
+  const routed=e.ctx.doPost({postData:{contents:JSON.stringify({action:'getRecentCases',limit:1,offset:0,adminPassword:'검증용'})}});assert.equal(routed.cases.length,1);
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');for(const text of ['id="reviewCaseRows"','id="reviewStatus"','id="reviewMore"','getRecentCases','class="test-badge"'])assert(admin.includes(text));
+});
 test('LADWP 8단계는 배정 컨트랙터만 순서대로 기록',()=>{
   const e=environment(),contractors=e.tables.get('Contractors'),cm=e.ctx.map_(contractors),contractorRow=Array(contractors.getLastColumn()).fill('');
   contractorRow[cm['컨트랙터ID']]='CTR-1';contractorRow[cm['액세스코드']]='1234';contractorRow[cm['활성여부']]='예';e.ctx.withLock_(()=>contractors.appendRow(contractorRow));
