@@ -42,7 +42,17 @@ function sendConfirmationEmail_(applicant,id){var d={applicant:applicant};var pa
 function authorizeStatus_(d){if(admin_(d))return true;if(!d.contractorId||!d.accessCode||!validateContractorLogin(d.contractorId,d.accessCode))return false;var r=findRow_(sheets_().cases,'CaseID',d.caseId);return !!r&&String(r.data[r.m['컨트랙터ID']])===String(d.contractorId);}
 function updateStatus_(d){return withLock_(function(){return updateStatusUnlocked_(d);});}function updateStatusUnlocked_(d){var s=sheets_(),r=findRow_(s.cases,'CaseID',d.caseId);if(!r||!d.newStatus)throw Error('유효한 케이스와 상태가 필요합니다.');var old=r.data[r.m['현재상태']],now=new Date();if(old!==d.newStatus){s.cases.getRange(r.row,r.m['현재상태']+1).setValue(d.newStatus);s.cases.getRange(r.row,r.m['최종수정일시']+1).setValue(now);s.history.appendRow([d.caseId,now,old,d.newStatus,d.note||'',d.agent||'']);}return {success:true};}
 
-function validateContractorLogin(contractorId,accessCode){if(!contractorId||!accessCode)return false;var r=findRow_(sheets_().contractors,'컨트랙터ID',contractorId);return !!r&&r.data[r.m['활성여부']]==='예'&&String(r.data[r.m['액세스코드']])===String(accessCode);}
+function validateContractorLogin(contractorId,accessCode){
+  Logger.log('로그인 시도: contractorId='+contractorId+', accessCode='+accessCode);
+  if(!contractorId){Logger.log('컨트랙터ID를 찾을 수 없음: '+contractorId);return false;}
+  var r=findRow_(sheets_().contractors,'컨트랙터ID',contractorId);
+  if(!r){Logger.log('컨트랙터ID를 찾을 수 없음: '+contractorId);return false;}
+  var active=r.data[r.m['활성여부']];
+  if(active!=='예'){Logger.log('비활성 업체: '+contractorId+', 활성여부='+active);return false;}
+  var savedAccessCode=r.data[r.m['액세스코드']];
+  if(!accessCode||String(savedAccessCode)!==String(accessCode)){Logger.log('액세스코드 불일치: 입력값=['+accessCode+'], 저장값=['+savedAccessCode+']');return false;}
+  Logger.log('로그인 성공: '+contractorId);return true;
+}
 function getCasesForContractor(contractorId,accessCode){if(!validateContractorLogin(contractorId,accessCode))throw Error('컨트랙터 인증에 실패했습니다.');var s=sheets_(),x=rows_(s.cases),h=rows_(s.history);return x.v.slice(1).filter(function(r){return String(r[x.m['컨트랙터ID']])===String(contractorId);}).map(function(r){return contractorCaseObj_(r,x.m,h.v,h.m);});}
 function getLadwpSteps(){return LADWP_INSTALL_STEPS.map(function(s){return {step:s.step,title:s.title,desc:s.desc};});}
 function isLadwpCase_(r,m){var a=json_(r[m['신청자정보(JSON)']],{}),matching=json_(r[m['매칭결과JSON']],{}),chargers=Array.isArray(matching.chargerPrograms)?matching.chargerPrograms:[],service=String(a.servicePricingType||a.serviceType||'');if(['chargerOnly','bundle','withCharger'].indexOf(service)<0&&a.wantsCharger!=='yes')return false;if(chargers.some(function(p){return p&&p.id==='LADWP_CHARGER';}))return true;return ['900','901'].indexOf(String(a.zip||'').slice(0,3))>=0;}
@@ -445,6 +455,8 @@ var caseObjBeforeDac_=caseObj_;caseObj_=function(r,m,hv,hm,includeMatching){var 
 var doPostBeforeProgramDac_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='submitEligibilityCheck')return out_(submitEligibilityCheck(d.applicantData));if(d.action==='createPendingPayment')return out_(createPendingPaymentFromLead(d.leadId,d.priceType,d.consentData,null,d.testMode===true));if(d.action==='getLadwpSteps')return out_({success:true,steps:getLadwpSteps()});if(d.action==='updateLadwpStep')return out_(updateLadwpStep(d.caseId,d.contractorId,d.accessCode,d.stepNumber));if(d.action==='listLeads'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_({success:true,leads:listLeads(d)});}if(d.action==='resendLeadEmail'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(resendLeadEmail(d.leadId,d));}if(d.action==='updateProgramStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(updateProgramStatus(d.programName,d.active,d.memo||'',d.nextCheckDate));}if(d.action==='setDacStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setDacStatus(d.caseId,d.status,d));}if(d.action==='setLadwpThirdPartyGuidance'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setLadwpThirdPartyGuidance(d.caseId,d.informed,d));}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeProgramDac_(e);};
 
 var doPostBeforeManualApplication_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='adminSubmitContractorApplication'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(adminSubmitContractorApplication(d.data||{},d.sendConfirmation===true,d));}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeManualApplication_(e);};
+
+var doPostBeforeContractorLoginLog_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='contractorLogin'){var success=validateContractorLogin(d.contractorId,d.accessCode);if(!success)Logger.log('contractorLogin 인증 실패: contractorId='+d.contractorId);return out_({success:success});}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeContractorLoginLog_(e);};
 
 /* 표시 전용: 현재 요금으로 추정하지 않고 실제 저장된 금액만 사용합니다. */
 function paymentSummary_(applicant){

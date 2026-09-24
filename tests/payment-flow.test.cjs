@@ -328,6 +328,11 @@ test('협력업체 지원서는 웹폼과 관리자 이메일 수동등록을 �
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');for(const text of ['id="manualApplicationForm"','adminSubmitContractorApplication','지원자에게 접수확인 이메일 발송','등록방식:','name="approveImmediately" type="checkbox" checked','관리자 수동등록 후 즉시승인','reviewContractorApplication','approval.accessCode'])assert(admin.includes(text));
   assert(!admin.includes('id="contractorForm"'));assert(!admin.includes("api('registerContractor'"));const contractors=admin.indexOf('<section id="contractors"'),applications=admin.indexOf('<section id="applications"'),manualIndex=admin.indexOf('id="manualApplicationForm"');assert(contractors<manualIndex&&manualIndex<applications);const applicationSection=admin.slice(applications,admin.indexOf('<section id="programs"'));assert(!applicationSection.includes('manualApplicationForm'));
 });
+test('컨트랙터 로그인 실패 원인과 라우팅 실패를 실행 로그에 기록',()=>{
+  const code=source;
+  for(const text of ['로그인 시도: contractorId=','컨트랙터ID를 찾을 수 없음:','비활성 업체:','액세스코드 불일치: 입력값=[','로그인 성공:','contractorLogin 인증 실패: contractorId='])assert(code.includes(text));
+  assert(code.includes("if(d.action==='contractorLogin'){var success=validateContractorLogin"));
+});
 test('관리자 케이스 검색은 버튼 또는 IME 조합 완료 후 Enter에서만 실행',()=>{
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
   assert(admin.includes('id="reviewQuery" type="text"'));assert(admin.includes("addEventListener('compositionstart'"));assert(admin.includes("addEventListener('compositionend'"));
