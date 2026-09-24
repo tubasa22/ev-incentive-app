@@ -342,7 +342,7 @@ function matchPrograms(d){
   return matchPrograms(applicant);
 }
 
-/* 무료 자격확인 리드: 상세 프로그램명과 금액은 고객 화면·이메일에 노출하지 않습니다. */
+/* 무료 자격확인 리드: 상세 프로그램명과 예상 지원금은 고객 화면·이메일에 노출하지 않습니다. */
 function activeLeadPrograms_(matching){
   var vehicles=Array.isArray(matching&&matching.vehiclePrograms)?matching.vehiclePrograms.filter(function(p){return p&&p.isActive!==false;}):[];
   var chargers=Array.isArray(matching&&matching.chargerPrograms)?matching.chargerPrograms.filter(function(p){return p&&p.isActive!==false;}):[];
@@ -350,10 +350,21 @@ function activeLeadPrograms_(matching){
 }
 function recommendedLeadPriceType_(matching){var p=activeLeadPrograms_(matching);return p.vehicles.length&&p.chargers.length?'bundle':p.vehicles.length?'vehicleOnly':p.chargers.length?'chargerOnly':'';}
 function leadPublicBase_(){var base=PropertiesService.getScriptProperties().getProperty('PUBLIC_SITE_URL')||'https://tubasa22.github.io/ev-incentive-app';return base.replace(/\/$/,'');}
+function emailHtmlEscape_(value){return String(value||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function buildBrandedEmailHtml_(title,bodyHtml){var logoUrl=leadPublicBase_()+'/assets/clean-ev-email-logo.png';return ['<div style="margin:0;padding:0;background:#F7F6F1;font-family:Arial,Apple SD Gothic Neo,Malgun Gothic,sans-serif;color:#1C1B18;line-height:1.65;text-align:left;word-break:keep-all;overflow-wrap:break-word">','<div style="max-width:640px;margin:0 auto;padding:28px 20px">','<div style="margin:0 0 22px"><img src="'+logoUrl+'" alt="클린EV" width="160" style="display:block;width:160px;max-width:100%;height:auto;border:0"></div>','<div style="background:#ffffff;border:1px solid #deddd8;border-radius:12px;padding:26px 22px">','<h1 style="margin:0 0 20px;font-size:23px;line-height:1.4;color:#0F5C4C">'+emailHtmlEscape_(title)+'</h1>',bodyHtml,'<div style="margin-top:26px;padding-top:16px;border-top:1px solid #deddd8;font-size:13px;color:#5C5A54">문의: <a href="mailto:'+APP_CONFIG.contactEmail+'" style="color:#0F5C4C">'+APP_CONFIG.contactEmail+'</a><br>본 메일은 클린EV가 운영하는 자동 발송 메일입니다.</div>','</div></div></div>'].join('');}
+function leadServiceSummary_(priceType){var names={vehicleOnly:'차량 교체/구매 지원',chargerOnly:'충전기 또는 전기패널 업그레이드 지원',bundle:'차량 및 충전기·전기패널 업그레이드 지원'};if(!Object.prototype.hasOwnProperty.call(STRIPE_PRICES,priceType)||!names[priceType])throw Error('리드의 추천 서비스 유형을 확인해주세요.');return {name:names[priceType],amount:STRIPE_PRICES[priceType]};}
 function sendLeadEmail_(lead){
   var possible=lead.status==='가능성있음',subject=possible?'[클린EV] 신청 가능성이 확인되었습니다':'[클린EV] 문의해주셔서 감사합니다';
-  var body=possible?['안녕하세요 '+lead.name+'님,','', '입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다. 정식 진행을 원하시면 아래 링크에서 계속 진행해주세요.','구체적인 프로그램과 지원 내용은 결제 후 신청 진행 과정에서 담당자가 안내드립니다.','', '계속하기: '+leadPublicBase_()+'/index.html?leadId='+encodeURIComponent(lead.leadId)].join('\n'):['안녕하세요 '+lead.name+'님,','', '현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다. 프로그램 상황은 계속 바뀌므로, 추후 해당되는 경우 다시 안내드리겠습니다.'].join('\n');
-  MailApp.sendEmail({to:lead.email,subject:subject,body:body,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
+  var name=emailHtmlEscape_(lead.name),body='',html='';
+  if(possible){
+    var service=leadServiceSummary_(lead.priceType),continueUrl=leadPublicBase_()+'/index.html?leadId='+encodeURIComponent(lead.leadId),summary='선택하신 서비스: '+service.name+' / 이용료: $'+service.amount;
+    body=['안녕하세요 '+lead.name+'님,','', '입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.',summary,'', '전체 이용료 안내','- 차량 교체/구매 지원: $99','- 충전기 또는 전기패널 업그레이드 지원: $149','- 둘 다: $199 (개별 이용 대비 $49 할인)','', '다음 단계','1. 아래 링크를 클릭합니다.','2. 신청 대행 동의서를 확인하고 전자서명합니다.','3. 결제 후 정식 신청이 접수됩니다.','', '계속 진행하기: '+continueUrl,'', '구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.'].join('\n');
+    html=buildBrandedEmailHtml_('신청 가능성이 확인되었습니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+name+'</strong>님.<br>입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.</p><div style="margin:0 0 22px;padding:16px 18px;background:#eef6f3;border-left:4px solid #0F5C4C;border-radius:6px"><strong style="display:block;color:#0F5C4C">선택하신 서비스</strong>'+emailHtmlEscape_(service.name)+'<br><strong>이용료: $'+service.amount+'</strong></div><div style="margin:0 0 22px;padding:16px 18px;background:#fff7e8;border-radius:8px"><strong>전체 이용료 안내</strong><br>차량 교체/구매 지원 $99<br>충전기 또는 전기패널 업그레이드 지원 $149<br>둘 다 $199 <span style="color:#0F5C4C;font-weight:bold">(개별 이용 대비 $49 할인)</span></div><h2 style="margin:0 0 12px;font-size:18px;color:#0F5C4C">다음 단계</h2><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>1. 링크 클릭</strong><br>아래 버튼으로 계속 진행합니다.</div><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>2. 동의서 확인</strong><br>신청 대행 동의서를 확인하고 전자서명합니다.</div><div style="margin:0 0 22px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>3. 결제 및 정식 신청</strong><br>결제가 확인되면 정식 신청이 접수됩니다.</div><p style="margin:0 0 22px;text-align:center"><a href="'+emailHtmlEscape_(continueUrl)+'" style="display:inline-block;padding:13px 24px;background:#0F5C4C;color:#ffffff;text-decoration:none;border-radius:7px;font-weight:bold">계속 진행하기</a></p><p style="margin:0;font-size:13px;color:#5C5A54">구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.</p>');
+  }else{
+    body=['안녕하세요 '+lead.name+'님,','', '현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다. 프로그램 상황은 계속 바뀌므로, 추후 해당되는 경우 다시 안내드리겠습니다.'].join('\n');
+    html=buildBrandedEmailHtml_('문의해주셔서 감사합니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+name+'</strong>님.</p><div style="padding:18px;background:#F7F6F1;border-left:4px solid #0F5C4C;border-radius:6px"><p style="margin:0">현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다.<br>프로그램 상황은 계속 바뀌므로, 추후 해당되는 경우 다시 안내드리겠습니다.</p></div>');
+  }
+  MailApp.sendEmail({to:lead.email,subject:subject,body:body,htmlBody:html,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
 }
 function submitEligibilityCheck(applicantData){
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
@@ -366,7 +377,7 @@ function submitEligibilityCheck(applicantData){
   var now=new Date(),leadId='LEAD-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMddHHmmss')+'-'+Utilities.getUuid().replace(/-/g,'');
   withLock_(function(){sheets_().leads.appendRow([leadId,now,applicant.name,applicant.phone,applicant.email,applicantJson,matchingJson,priceType,status,'아니오',now]);});
   var emailSent=false;
-  try{sendLeadEmail_({leadId:leadId,name:applicant.name,email:applicant.email,status:status});emailSent=true;Logger.log('자격확인 안내 이메일 발송 성공: '+leadId);}catch(error){Logger.log('자격확인 안내 이메일 발송 실패: '+leadId+', 오류='+String(error&&error.message||error));}
+  try{sendLeadEmail_({leadId:leadId,name:applicant.name,email:applicant.email,status:status,priceType:priceType});emailSent=true;Logger.log('자격확인 안내 이메일 발송 성공: '+leadId);}catch(error){Logger.log('자격확인 안내 이메일 발송 실패: '+leadId+', 오류='+String(error&&error.message||error));}
   withLock_(function(){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r){sh.getRange(r.row,r.m['이메일발송여부']+1).setValue(emailSent?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}});
   return {success:true,leadId:leadId,status:status,emailSent:emailSent};
 }
@@ -386,7 +397,7 @@ function listLeads(d){
 }
 function resendLeadEmail(leadId,d){
   if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var r=findRow_(sheets_().leads,'리드ID',String(leadId||''));if(!r)throw Error('리드를 찾을 수 없습니다.');var status=String(r.data[r.m['리드상태']]);if(status!=='가능성있음')throw Error(status==='전환완료'?'이미 정식 신청으로 전환된 리드입니다.':'결제 안내 재발송 대상 리드가 아닙니다.');
-  var lead={leadId:r.data[r.m['리드ID']],name:r.data[r.m['이름']],email:r.data[r.m['이메일']],status:status};
+  var lead={leadId:r.data[r.m['리드ID']],name:r.data[r.m['이름']],email:r.data[r.m['이메일']],status:status,priceType:String(r.data[r.m['추천가격유형']]||'')};
   try{sendLeadEmail_(lead);}catch(error){Logger.log('리드 안내 이메일 재발송 실패: '+leadId+', 오류='+String(error&&error.message||error));throw Error('안내 이메일 재발송에 실패했습니다.');}
   return withLock_(function(){var sh=sheets_().leads,current=findRow_(sh,'리드ID',leadId);sh.getRange(current.row,current.m['이메일발송여부']+1).setValue('예');sh.getRange(current.row,current.m['최종수정일시']+1).setValue(new Date());return {success:true};});
 }

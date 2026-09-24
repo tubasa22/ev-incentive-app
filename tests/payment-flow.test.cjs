@@ -95,11 +95,16 @@ test('공개 createCase 우회 차단',()=>{
 test('무료 자격확인 리드·이메일·결제 후 전환 분리',()=>{
   const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
   const checked=e.ctx.submitEligibilityCheck(applicant);assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
-  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(!e.mails[0].body.includes('$'));
+  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(e.mails[0].body.includes('선택하신 서비스: 차량 교체/구매 지원 / 이용료: $99'));assert(e.mails[0].body.includes('둘 다: $199 (개별 이용 대비 $49 할인)'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(e.mails[0].htmlBody.includes('계속 진행하기'));
   const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'vehicleOnly');
   const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'vehicleOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
   assert.equal(e.cases(),0);const sid=e.paid(pending.token);assert.equal(e.ctx.verifyStripeSession(sid,pending.token).success,true);assert.equal(e.cases(),1);
   assert.equal(e.ctx.getLeadForContinue(checked.leadId).error,'이미 처리된 신청입니다');
+});
+test('부적격 리드도 브랜드 HTML·plain text 이메일 발송',()=>{
+  const e=environment(),applicant={...e.applicant,income:'999999'};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
+  const checked=e.ctx.submitEligibilityCheck(applicant);assert.equal(checked.status,'부적격');assert.equal(e.cases(),0);assert.equal(e.mails.length,1);
+  assert(e.mails[0].body.includes('현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(!e.mails[0].htmlBody.includes('Replace Your Ride'));
 });
 test('정상 결제·토큰 복원·반복 호출·메일 대기',()=>{
   const e=environment(),t=e.pending(),id=e.paid(t);
@@ -145,6 +150,7 @@ test('HTML 스크립트 구문·설정·웹훅 부재',()=>{
     const html=fs.readFileSync(path.join(root,file),'utf8');
     for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
   }
+  const intakeHtml=fs.readFileSync(path.join(root,'index.html'),'utf8'),serviceChoice=intakeHtml.match(/<fieldset id="serviceChoice">([\s\S]*?)<\/fieldset>/)[1];assert(!serviceChoice.includes('$'));assert(!serviceChoice.includes('할인'));
   const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
   assert.equal(config.window.SITE_CONFIG.pricing.vehicleOnly,99);
   assert.equal(config.window.SITE_CONFIG.pricing.bundle,199);
