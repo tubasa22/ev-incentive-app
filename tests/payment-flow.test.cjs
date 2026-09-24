@@ -326,6 +326,7 @@ test('협력업체 지원서는 웹폼과 관리자 이메일 수동등록을 �
   const mailed=e.ctx.adminSubmitContractorApplication({...data,email:'second@example.com'},true,auth);assert.equal(mailed.applicantEmailSent,true);assert.equal(e.mails.length,3);
   const routed=e.ctx.doPost({postData:{contents:JSON.stringify({action:'adminSubmitContractorApplication',data:{...data,email:'route@example.com'},sendConfirmation:false,adminPassword:'검증용'})}});assert.equal(routed.success,true);
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');for(const text of ['id="manualApplicationForm"','adminSubmitContractorApplication','지원자에게 접수확인 이메일 발송','등록방식:','name="approveImmediately" type="checkbox" checked','관리자 수동등록 후 즉시승인','reviewContractorApplication','approval.accessCode'])assert(admin.includes(text));
+  assert(!admin.includes('id="contractorForm"'));assert(!admin.includes("api('registerContractor'"));const contractors=admin.indexOf('<section id="contractors"'),applications=admin.indexOf('<section id="applications"'),manualIndex=admin.indexOf('id="manualApplicationForm"');assert(contractors<manualIndex&&manualIndex<applications);const applicationSection=admin.slice(applications,admin.indexOf('<section id="programs"'));assert(!applicationSection.includes('manualApplicationForm'));
 });
 test('관리자 케이스 검색은 버튼 또는 IME 조합 완료 후 Enter에서만 실행',()=>{
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
