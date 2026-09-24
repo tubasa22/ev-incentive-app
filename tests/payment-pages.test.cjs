@@ -10,7 +10,7 @@ function element(value=''){
 async function intake(ready){
   const nodes=new Map(),get=s=>{if(!nodes.has(s))nodes.set(s,element());return nodes.get(s);};
   let sent=[],redirect='';
-  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}};
+  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{testMode:true,test:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_TEST_LINK_HERE'},live:{paymentLinkVehicleOnly:'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}}};
   const pageLocation={search:'?leadId=LEAD-test',assign:url=>redirect=url};
   const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,location:pageLocation,
     document:{querySelector:get,querySelectorAll:s=>s==='.step'?[element()]:[]},

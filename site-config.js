@@ -11,9 +11,17 @@ window.SITE_CONFIG = {
     creditNote: '충전기 시공을 진행하시면 이 이용료는 시공비에서 차감됩니다.'
   },
   stripe: {
-    paymentLinkVehicleOnly: 'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE',
-    paymentLinkChargerOnly: 'PASTE_STRIPE_LINK_CHARGER_ONLY_HERE',
-    paymentLinkBundle: 'PASTE_STRIPE_LINK_BUNDLE_HERE'
+    testMode: true,
+    test: {
+      paymentLinkVehicleOnly: 'https://buy.stripe.com/test_dRm14naVd1eeb9qdzM2kw00',
+      paymentLinkChargerOnly: 'https://buy.stripe.com/test_dRm6oHaVd8GG4L21R42kw01',
+      paymentLinkBundle: 'https://buy.stripe.com/test_7sY14n5ATg987XeanA2kw02'
+    },
+    live: {
+      paymentLinkVehicleOnly: 'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE',
+      paymentLinkChargerOnly: 'PASTE_STRIPE_LINK_CHARGER_ONLY_HERE',
+      paymentLinkBundle: 'PASTE_STRIPE_LINK_BUNDLE_HERE'
+    }
   },
   images: {
     hero: 'assets/clean-ev-hero.png',

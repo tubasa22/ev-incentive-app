@@ -157,7 +157,8 @@ $('#form').onsubmit=async e=>{
     if(!continuedApplicant)throw Error('저장된 자격 확인 정보를 불러오지 못했습니다. 다시 자격 확인을 진행해주세요.');
     if($('#applicationConsent').disabled||!$('#applicationConsent').checked||!$('#consentSignature').value.trim())throw Error('신청 대행 동의와 전자서명을 완료해 주세요.');
     submitButton.disabled=true;submitButton.textContent='결제 준비 중...';
-    let rawLink=CONFIG.stripe?.[{vehicleOnly:'paymentLinkVehicleOnly',chargerOnly:'paymentLinkChargerOnly',bundle:'paymentLinkBundle'}[price.key]];
+    const stripeLinks=CONFIG.stripe?.testMode?CONFIG.stripe.test:CONFIG.stripe?.live;
+    let rawLink=stripeLinks?.[{vehicleOnly:'paymentLinkVehicleOnly',chargerOnly:'paymentLinkChargerOnly',bundle:'paymentLinkBundle'}[price.key]];
     if(!rawLink||rawLink.startsWith('PASTE_'))throw Error('결제 시스템이 아직 준비되지 않았습니다. 관리자에게 문의해주세요 ('+CONFIG.contactEmail+')');
     let link=new URL(rawLink);
     if(link.protocol!=='https:'||link.hostname!=='buy.stripe.com')throw Error('결제 링크 설정을 확인해주세요. 문의: '+CONFIG.contactEmail);

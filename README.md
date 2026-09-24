@@ -77,11 +77,11 @@
 
 ### Stripe 최초 설정
 
-웹훅이나 새 중계 서버는 사용하지 않습니다. Apps Script가 Stripe API로 결제 세션을 직접 조회합니다. 현재 Payment Link는 플레이스홀더이며 비밀키도 설정하지 않았으므로 실제 결제는 아직 사용할 수 없습니다.
+웹훅이나 새 중계 서버는 사용하지 않습니다. Apps Script가 Stripe API로 결제 세션을 직접 조회합니다. 테스트 Payment Link 3개가 `SITE_CONFIG.stripe.test`에 연결되어 있고 `testMode: true`인 동안 이 링크를 사용합니다. 운영 전에는 운영 링크와 비밀키를 설정하고 테스트 모드를 해제해야 합니다.
 
 1. Stripe 계정을 만들고 **일회성 USD $99 / $149 / $199 Payment Link**를 각각 생성합니다. 수량은 1로 고정하고 할인·자동 세금·통화 변환은 사용하지 않습니다. 서버는 정확한 금액을 대조합니다.
 2. 세 링크의 결제 후 이동 URL을 모두 다음으로 설정합니다: `https://tubasa22.github.io/ev-incentive-app/payment-success.html?session_id={CHECKOUT_SESSION_ID}`.
-3. 생성된 링크를 `site-config.js`의 `SITE_CONFIG.stripe.paymentLinkVehicleOnly`, `paymentLinkChargerOnly`, `paymentLinkBundle`에 각각 입력합니다. 기존 `paymentLinkWithCharger` 설정은 `paymentLinkBundle`로 옮깁니다. 현재는 기본 `https://buy.stripe.com/…` 링크를 지원합니다.
+3. 생성된 운영 링크를 `site-config.js`의 `SITE_CONFIG.stripe.live.paymentLinkVehicleOnly`, `paymentLinkChargerOnly`, `paymentLinkBundle`에 각각 입력합니다. 테스트 중에는 `SITE_CONFIG.stripe.test`의 테스트 링크와 `testMode: true`를 사용하며, 운영 전환 시 운영 비밀키와 함께 `testMode: false`로 바꿉니다. 현재는 기본 `https://buy.stripe.com/…` 링크를 지원합니다.
 4. Stripe 대시보드의 **Secret key**를 Apps Script Script Properties의 `STRIPE_SECRET_KEY`에 저장합니다. **Publishable key가 아닙니다.** 비밀키는 HTML·site-config.js·Git 저장소에 넣지 않습니다.
 5. 변경된 `apps-script/Code.gs`를 편집기에 반영하고 웹앱을 **새 버전으로 배포**합니다. PendingPayments 시트와 감사용 추가 컬럼은 첫 사용 시 자동 생성됩니다.
 6. 기존 `processPendingConfirmationEmails` 1분 주기 트리거와 메일·외부 요청 권한을 확인합니다. 결제 확인은 메일을 직접 보내지 않고 기존 발송 대기 처리에 연결합니다.

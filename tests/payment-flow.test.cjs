@@ -155,8 +155,11 @@ test('HTML 스크립트 구문·설정·웹훅 부재',()=>{
   const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
   assert.equal(config.window.SITE_CONFIG.pricing.vehicleOnly,99);
   assert.equal(config.window.SITE_CONFIG.pricing.bundle,199);
-  assert(config.window.SITE_CONFIG.stripe.paymentLinkVehicleOnly.startsWith('PASTE_'));
-  assert(config.window.SITE_CONFIG.stripe.paymentLinkBundle.startsWith('PASTE_'));
+  assert.equal(config.window.SITE_CONFIG.stripe.testMode,true);
+  assert.equal(config.window.SITE_CONFIG.stripe.test.paymentLinkVehicleOnly,'https://buy.stripe.com/test_dRm14naVd1eeb9qdzM2kw00');
+  assert.equal(config.window.SITE_CONFIG.stripe.test.paymentLinkChargerOnly,'https://buy.stripe.com/test_dRm6oHaVd8GG4L21R42kw01');
+  assert.equal(config.window.SITE_CONFIG.stripe.test.paymentLinkBundle,'https://buy.stripe.com/test_7sY14n5ATg987XeanA2kw02');
+  assert(config.window.SITE_CONFIG.stripe.live.paymentLinkVehicleOnly.startsWith('PASTE_'));
   assert(!source.includes('handleStripeWebhook'));
 });
 test('환불 72시간 경계·제출상태·누락/미래 시각·이력 판별',()=>{
