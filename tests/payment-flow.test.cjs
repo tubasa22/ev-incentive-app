@@ -319,6 +319,11 @@ test('딜러 관리자 UI와 API 라우팅은 관리자 화면에만 존재',()=
   for(const text of ['딜러 제휴','딜러 소개비 관리','referCaseToDealer','recordDealerReferralFee'])assert(admin.includes(text));
   assert(!contractor.includes('딜러 소개비'));assert(!index.includes('딜러 소개비'));
 });
+test('관리자 케이스 검색은 버튼 또는 IME 조합 완료 후 Enter에서만 실행',()=>{
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+  assert(admin.includes('id="reviewQuery" type="text"'));assert(admin.includes("addEventListener('compositionstart'"));assert(admin.includes("addEventListener('compositionend'"));
+  assert(admin.includes("event.key==='Enter'&&!event.isComposing&&!reviewQueryComposing"));assert(!admin.includes("$('#reviewQuery').onkeydown"));
+});
 test('LADWP 8단계는 배정 컨트랙터만 순서대로 기록',()=>{
   const e=environment(),contractors=e.tables.get('Contractors'),cm=e.ctx.map_(contractors),contractorRow=Array(contractors.getLastColumn()).fill('');
   contractorRow[cm['컨트랙터ID']]='CTR-1';contractorRow[cm['액세스코드']]='1234';contractorRow[cm['활성여부']]='예';e.ctx.withLock_(()=>contractors.appendRow(contractorRow));
