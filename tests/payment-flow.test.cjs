@@ -342,6 +342,11 @@ test('관리자 케이스 검토는 최신순 페이지와 검색·상태필터�
   const routed=e.ctx.doPost({postData:{contents:JSON.stringify({action:'getRecentCases',limit:1,offset:0,adminPassword:'검증용'})}});assert.equal(routed.cases.length,1);
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');for(const text of ['id="reviewCaseRows"','id="reviewStatus"','id="reviewMore"','getRecentCases','class="test-badge"'])assert(admin.includes(text));
 });
+test('관리자 탭은 업무 흐름 순서로 배치되고 이름 호칭을 중복하지 않음',()=>{
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+  assert(admin.includes("const order=['dashboard','leads','review','assign','contractors','applications','dealers','payments','programs','admins']"));
+  assert(admin.includes("honorific=/님$/.test(adminName)?'':'님'"));assert(!admin.includes("(result.adminName||'관리자')+'님 로그인 중'"));
+});
 test('LADWP 8단계는 배정 컨트랙터만 순서대로 기록',()=>{
   const e=environment(),contractors=e.tables.get('Contractors'),cm=e.ctx.map_(contractors),contractorRow=Array(contractors.getLastColumn()).fill('');
   contractorRow[cm['컨트랙터ID']]='CTR-1';contractorRow[cm['액세스코드']]='1234';contractorRow[cm['활성여부']]='예';e.ctx.withLock_(()=>contractors.appendRow(contractorRow));
