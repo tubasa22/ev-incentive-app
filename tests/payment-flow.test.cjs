@@ -319,6 +319,14 @@ test('딜러 관리자 UI와 API 라우팅은 관리자 화면에만 존재',()=
   for(const text of ['딜러 제휴','딜러 소개비 관리','referCaseToDealer','recordDealerReferralFee'])assert(admin.includes(text));
   assert(!contractor.includes('딜러 소개비'));assert(!index.includes('딜러 소개비'));
 });
+test('협력업체 지원서는 웹폼과 관리자 이메일 수동등록을 구분',()=>{
+  const e=environment(),auth={adminPassword:'검증용'},data={name:'테스트 전기',phone:'714-555-1111',email:'apply@example.com',serviceArea:'오렌지카운티',licenseNumber:'1234567',licenseType:'C-10',licenseExpiry:'2027-01-01',bondCompany:'테스트 본드',bondNumber:'B-123',bondAmount:'25000',bondExpiry:'2027-02-01',bio:'주택용 전기 시공'};
+  const publicResult=e.ctx.submitContractorApplication(data),sh=e.tables.get('ContractorApplications'),m=e.ctx.map_(sh);assert.equal(sh.data[1][m['등록방식']],'웹폼');assert.equal(e.mails.length,2);assert.throws(()=>e.ctx.submitContractorApplication(data));
+  assert.throws(()=>e.ctx.adminSubmitContractorApplication(data,false,{}));const manual=e.ctx.adminSubmitContractorApplication(data,false,auth);assert.equal(sh.data[2][m['등록방식']],'이메일수동등록');assert.equal(sh.data[2][m['지원상태']],'검토대기');assert.equal(e.mails.length,2);assert.equal(manual.applicantEmailSent,false);assert.equal(manual.adminEmailSent,false);
+  const mailed=e.ctx.adminSubmitContractorApplication({...data,email:'second@example.com'},true,auth);assert.equal(mailed.applicantEmailSent,true);assert.equal(e.mails.length,3);
+  const routed=e.ctx.doPost({postData:{contents:JSON.stringify({action:'adminSubmitContractorApplication',data:{...data,email:'route@example.com'},sendConfirmation:false,adminPassword:'검증용'})}});assert.equal(routed.success,true);
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');for(const text of ['id="manualApplicationForm"','adminSubmitContractorApplication','지원자에게 접수확인 이메일 발송','등록방식:'])assert(admin.includes(text));
+});
 test('관리자 케이스 검색은 버튼 또는 IME 조합 완료 후 Enter에서만 실행',()=>{
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
   assert(admin.includes('id="reviewQuery" type="text"'));assert(admin.includes("addEventListener('compositionstart'"));assert(admin.includes("addEventListener('compositionend'"));
