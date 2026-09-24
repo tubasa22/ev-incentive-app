@@ -25,7 +25,7 @@ async function intake(ready){
   await get('#form').onsubmit({preventDefault(){},target:get('#form')});
   if(ready){
     assert.equal(sent.length,1);assert.equal(sent[0].action,'createPendingPayment');
-    assert.equal(sent[0].priceType,'vehicleOnly');
+    assert.equal(sent[0].priceType,'vehicleOnly');assert.equal(sent[0].testMode,true);
     assert.equal(sent[0].leadId,'LEAD-test');
     const url=new URL(redirect);assert.equal(url.searchParams.get('client_reference_id'),'PAY-'+'a'.repeat(32));assert.equal(url.searchParams.get('locale'),'ko');
     assert.equal(sent[0].consentData.applicationConsent,'예');

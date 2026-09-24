@@ -55,8 +55,8 @@ function environment(){
   vm.runInContext(source,ctx);
   ctx.withLock_(()=>ctx.sheets_());
   const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',housing:'자가',residenceType:'단독주택',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',serviceType:'vehicleOnly',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
-  function pending(charger=false){
-    return ctx.createPendingPayment({...applicant,serviceType:charger?'bundle':'vehicleOnly',wantsCharger:charger?'yes':'no'},{results:[]},charger?'bundle':'vehicleOnly').token;
+  function pending(charger=false,testMode=false){
+    return ctx.createPendingPayment({...applicant,serviceType:charger?'bundle':'vehicleOnly',wantsCharger:charger?'yes':'no'},{results:[]},charger?'bundle':'vehicleOnly',testMode).token;
   }
   function paid(token,changes={}){
     session={id:'cs_test_'+crypto.randomBytes(8).toString('hex'),client_reference_id:token,payment_status:'paid',status:'complete',mode:'payment',currency:'usd',amount_total:9900,livemode:false,...changes};
@@ -86,6 +86,15 @@ test('미설정 키·미결제·위변조·금액·통화·모드 차단',()=>{
   const id=e.paid(t);e.setApiCode(401);assert.equal(e.ctx.verifyStripeSession(id,t).success,false);
   e.setApiCode(200);delete e.props.STRIPE_SECRET_KEY;assert.equal(e.ctx.verifyStripeSession(id,t).error,'결제 시스템이 아직 설정되지 않았습니다');
   assert.equal(e.cases(),0);
+});
+test('테스트 결제만 소액을 허용하고 운영 결제는 정가를 검증',()=>{
+  const testEnv=environment(),testToken=testEnv.pending(false,true),testRow=testEnv.tables.get('PendingPayments').data[1],headers=testEnv.tables.get('PendingPayments').data[0];
+  assert.equal(testRow[headers.indexOf('테스트모드')],'예');
+  assert.equal(testEnv.ctx.verifyStripeSession(testEnv.paid(testToken,{amount_total:50}),testToken).success,true);
+  const liveEnv=environment(),liveToken=liveEnv.pending(false,true);liveEnv.props.STRIPE_SECRET_KEY='sk_live_검증용';
+  assert.equal(liveEnv.ctx.verifyStripeSession(liveEnv.paid(liveToken,{amount_total:50,livemode:true}),liveToken).success,false);
+  const regularEnv=environment(),regularToken=regularEnv.pending();
+  assert.equal(regularEnv.ctx.verifyStripeSession(regularEnv.paid(regularToken,{amount_total:50}),regularToken).success,false);
 });
 test('공개 createCase 우회 차단',()=>{
   const e=environment();

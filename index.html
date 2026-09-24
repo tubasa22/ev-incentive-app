@@ -165,7 +165,7 @@ $('#form').onsubmit=async e=>{
     let link=new URL(rawLink);
     if(link.protocol!=='https:'||link.hostname!=='buy.stripe.com')throw Error('결제 링크 설정을 확인해주세요. 문의: '+CONFIG.contactEmail);
     const additionalData={};$$('#additionalServiceFields [name]').forEach(field=>additionalData[field.name]=field.value);
-    let pending=await post({action:'createPendingPayment',leadId:leadId,priceType:price.key,consentData:{applicationConsent:'예',applicationConsentAt:consentCompletedAt||new Date().toISOString(),applicationConsentSignature:$('#consentSignature').value.trim(),additionalData}});
+    let pending=await post({action:'createPendingPayment',leadId:leadId,priceType:price.key,testMode:CONFIG.stripe?.testMode===true,consentData:{applicationConsent:'예',applicationConsentAt:consentCompletedAt||new Date().toISOString(),applicationConsentSignature:$('#consentSignature').value.trim(),additionalData}});
     if(!/^PAY-[a-f0-9]{32}$/.test(pending.token))throw Error('결제 준비 응답을 확인하지 못했습니다. 관리자에게 문의해주세요.');
     link.searchParams.set('client_reference_id',pending.token);
     // 개인정보와 신청 토큰은 브라우저 저장소에 남기지 않습니다.

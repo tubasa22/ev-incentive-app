@@ -85,7 +85,7 @@
 4. Stripe 대시보드의 **Secret key**를 Apps Script Script Properties의 `STRIPE_SECRET_KEY`에 저장합니다. **Publishable key가 아닙니다.** 비밀키는 HTML·site-config.js·Git 저장소에 넣지 않습니다.
 5. 변경된 `apps-script/Code.gs`를 편집기에 반영하고 웹앱을 **새 버전으로 배포**합니다. PendingPayments 시트와 감사용 추가 컬럼은 첫 사용 시 자동 생성됩니다.
 6. 기존 `processPendingConfirmationEmails` 1분 주기 트리거와 메일·외부 요청 권한을 확인합니다. 결제 확인은 메일을 직접 보내지 않고 기존 발송 대기 처리에 연결합니다.
-7. 먼저 별도 테스트 시트·테스트 Payment Link·테스트 비밀키로 아래 시나리오를 확인합니다. 운영 전에는 운영용 링크 3개와 운영 Secret key를 함께 설정합니다. 웹훅 등록과 웹훅 시크릿은 필요 없습니다.
+7. 먼저 별도 테스트 시트·테스트 Payment Link·테스트 비밀키로 아래 시나리오를 확인합니다. `testMode: true`로 생성된 PendingPayments는 테스트 키·테스트 세션이 일치하면 소액 테스트 결제를 허용하지만 결제 완료 여부는 계속 확인합니다. 운영 전에는 운영용 링크 3개와 운영 Secret key를 함께 설정하고 `testMode: false`로 전환합니다. 운영 결제의 $99/$149/$199 금액 검증은 그대로 유지됩니다. 웹훅 등록과 웹훅 시크릿은 필요 없습니다.
 
 ### 신청 토큰 전달 방식
 

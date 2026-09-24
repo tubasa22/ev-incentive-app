@@ -80,11 +80,11 @@ function resendContractorInvite(contractorId){var s=sheets_(),c=findRow_(s.contr
 
 /* 신청 대행 결제: 비밀키는 Script Properties에만 저장합니다. */
 var STRIPE_PRICES={vehicleOnly:99,chargerOnly:149,bundle:199};
-var PENDING_PAYMENT_HEADERS=['결제토큰','생성일시','가격유형','금액','결제상태','Stripe세션ID','신청자정보임시JSON','매칭결과임시JSON','최종수정일시','접수CaseID','결제확인방식','확인관리자ID','확인관리자명','확인일시'];
+var PENDING_PAYMENT_HEADERS=['결제토큰','생성일시','가격유형','금액','결제상태','Stripe세션ID','신청자정보임시JSON','매칭결과임시JSON','최종수정일시','접수CaseID','결제확인방식','확인관리자ID','확인관리자명','확인일시','테스트모드'];
 function pendingSheet_(){return ensure_('PendingPayments',PENDING_PAYMENT_HEADERS);}
 function validPaymentToken_(token){return /^PAY-[a-f0-9]{32}$/.test(String(token||''));}
 function validStripeSession_(id){return /^cs_(test_|live_)[A-Za-z0-9]+$/.test(String(id||''));}
-function createPendingPayment(applicantData,matchingResult,priceType){
+function createPendingPayment(applicantData,matchingResult,priceType,testMode){
   if(!Object.prototype.hasOwnProperty.call(STRIPE_PRICES,priceType))throw Error('가격 유형을 확인해주세요.');
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
   if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 전화번호, 이메일을 확인해주세요.');
@@ -105,12 +105,12 @@ function createPendingPayment(applicantData,matchingResult,priceType){
     var m=JSON.stringify(calculateMatching_(applicant,getProgramStatuses()));
     if(m.length>45000)throw Error('신청 검토 정보가 너무 큽니다.');
     var sh=pendingSheet_(),token='PAY-'+Utilities.getUuid().replace(/-/g,''),now=new Date();
-    sh.appendRow([token,now,priceType,STRIPE_PRICES[priceType],'대기','',a,m,now,'','','','','']);
+    sh.appendRow([token,now,priceType,STRIPE_PRICES[priceType],'대기','',a,m,now,'','','','','',testMode===true?'예':'아니오']);
     Logger.log('결제대기 신청 저장 완료');
     return {success:true,token:token};
   });
 }
-function createPendingPaymentFromLead(leadId,priceType,consentData,additionalData){
+function createPendingPaymentFromLead(leadId,priceType,consentData,additionalData,testMode){
   var lead=findRow_(sheets_().leads,'리드ID',String(leadId||''));
   if(!lead||lead.data[lead.m['리드상태']]!=='가능성있음')throw Error('유효하지 않거나 이미 처리된 신청입니다. 다시 자격 확인을 진행해주세요.');
   var applicant=json_(lead.data[lead.m['신청자정보JSON']],null);
@@ -123,7 +123,7 @@ function createPendingPaymentFromLead(leadId,priceType,consentData,additionalDat
   applicant.applicationConsent=consentData.applicationConsent;
   applicant.applicationConsentAt=consentData.applicationConsentAt;
   applicant.applicationConsentSignature=String(consentData.applicationConsentSignature||'').trim();
-  return createPendingPayment(applicant,null,priceType);
+  return createPendingPayment(applicant,null,priceType,testMode);
 }
 function getPendingPaymentStatus(token){
   return withLock_(function(){
@@ -150,7 +150,8 @@ function verifyStripeSession(sessionId,token){
       if(!r)throw Error('결제대기 신청을 찾을 수 없습니다. 관리자에게 문의해주세요.');
       var savedType=r.data[r.m['가격유형']];
       var expected=savedType==='withCharger'?199:STRIPE_PRICES[savedType]; // 기존 결제대기 건만 호환
-      if(!expected||Number(r.data[r.m['금액']])!==expected||session.amount_total!==expected*100)throw Error('결제 금액이 신청 이용료와 일치하지 않습니다.');
+      var testPayment=r.data[r.m['테스트모드']]==='예'&&testKey&&session.livemode===false;
+      if(!testPayment&&(!expected||Number(r.data[r.m['금액']])!==expected||session.amount_total!==expected*100))throw Error('결제 금액이 신청 이용료와 일치하지 않습니다.');
       return completePendingPayment_(actualToken,sessionId,'Stripe API','','');
     });
   }catch(error){
@@ -418,7 +419,7 @@ updateProgramStatus=function(programName,active,memo,nextCheckDate){if(PROGRAM_N
 function setDacStatus(caseId,status,d){if(!admin_(d))throw Error('관리자 인증이 필요합니다.');if(['DAC 해당','DAC 미해당','미확인'].indexOf(status)<0)throw Error('DAC 판정값이 올바르지 않습니다.');return withLock_(function(){var sh=sheets_().cases,r=findRow_(sh,'CaseID',caseId);if(!r)throw Error('케이스를 찾을 수 없습니다.');sh.getRange(r.row,r.m['DAC상태']+1).setValue(status);sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());return {success:true,dacStatus:status};});}
 function setLadwpThirdPartyGuidance(caseId,informed,d){if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var checked=informed===true;return withLock_(function(){var sh=sheets_().cases,r=findRow_(sh,'CaseID',caseId);if(!r)throw Error('케이스를 찾을 수 없습니다.');var matching=json_(r.data[r.m['매칭결과JSON']],{}),chargers=Array.isArray(matching.chargerPrograms)?matching.chargerPrograms:[];if(!chargers.some(function(p){return p&&p.id==='LADWP_CHARGER';}))throw Error('LADWP 충전기 리베이트 후보 케이스가 아닙니다.');sh.getRange(r.row,r.m['LADWP제3자지정안내여부']+1).setValue(checked?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());return {success:true,informed:checked};});}
 var caseObjBeforeDac_=caseObj_;caseObj_=function(r,m,hv,hm,includeMatching){var o=caseObjBeforeDac_(r,m,hv,hm,includeMatching);if(includeMatching){o.dacStatus=String(r[m['DAC상태']]||'미확인');o.ladwpThirdPartyGuidanceInformed=r[m['LADWP제3자지정안내여부']]==='예';o.ladwpStep=Math.max(0,Math.min(8,Number(r[m['LADWP절차단계']]||0)));}return o;};
-var doPostBeforeProgramDac_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='submitEligibilityCheck')return out_(submitEligibilityCheck(d.applicantData));if(d.action==='createPendingPayment')return out_(createPendingPaymentFromLead(d.leadId,d.priceType,d.consentData));if(d.action==='getLadwpSteps')return out_({success:true,steps:getLadwpSteps()});if(d.action==='updateLadwpStep')return out_(updateLadwpStep(d.caseId,d.contractorId,d.accessCode,d.stepNumber));if(d.action==='listLeads'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_({success:true,leads:listLeads(d)});}if(d.action==='resendLeadEmail'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(resendLeadEmail(d.leadId,d));}if(d.action==='updateProgramStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(updateProgramStatus(d.programName,d.active,d.memo||'',d.nextCheckDate));}if(d.action==='setDacStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setDacStatus(d.caseId,d.status,d));}if(d.action==='setLadwpThirdPartyGuidance'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setLadwpThirdPartyGuidance(d.caseId,d.informed,d));}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeProgramDac_(e);};
+var doPostBeforeProgramDac_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='submitEligibilityCheck')return out_(submitEligibilityCheck(d.applicantData));if(d.action==='createPendingPayment')return out_(createPendingPaymentFromLead(d.leadId,d.priceType,d.consentData,null,d.testMode===true));if(d.action==='getLadwpSteps')return out_({success:true,steps:getLadwpSteps()});if(d.action==='updateLadwpStep')return out_(updateLadwpStep(d.caseId,d.contractorId,d.accessCode,d.stepNumber));if(d.action==='listLeads'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_({success:true,leads:listLeads(d)});}if(d.action==='resendLeadEmail'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(resendLeadEmail(d.leadId,d));}if(d.action==='updateProgramStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(updateProgramStatus(d.programName,d.active,d.memo||'',d.nextCheckDate));}if(d.action==='setDacStatus'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setDacStatus(d.caseId,d.status,d));}if(d.action==='setLadwpThirdPartyGuidance'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(setLadwpThirdPartyGuidance(d.caseId,d.informed,d));}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeProgramDac_(e);};
 
 /* 표시 전용: 현재 요금으로 추정하지 않고 실제 저장된 금액만 사용합니다. */
 function paymentSummary_(applicant){
