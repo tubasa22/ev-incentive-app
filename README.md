@@ -37,7 +37,7 @@
 1. `site-config.js`의 `apiUrl`을 실제 배포된 Apps Script 웹앱 URL로 교체합니다.
 2. `admin.html`에서 관리자 비밀번호로 로그인해 성공 여부를 확인합니다.
 3. 관리자 화면에서 테스트 업체 1개를 등록하고 Google Sheets `Contractors` 시트에 행이 생기는지 확인합니다.
-4. `index.html`에서 무료 자격확인을 제출해 `Leads` 시트와 안내 이메일을 확인하고, 이메일의 `leadId` 링크에서 동의·결제를 완료한 뒤에만 `Cases` 시트에 행이 생기는지 확인합니다.
+4. `index.html`에서 무료 자격확인을 제출해 `Leads` 시트와 안내 이메일을 확인합니다. 이메일의 `leadId` 링크는 서버 응답 전 기본 폼 대신 로딩 화면을 표시하며, 저장된 서비스 확인·동의·결제를 완료한 뒤에만 `Cases` 시트에 행이 생기는지 확인합니다.
 5. 등록한 업체의 계약서 링크로 `contract.html`을 열어 작성하고 선택 서류를 업로드한 뒤, `Contractors` 시트에 라이선스·본드 정보와 Drive 파일 링크가 채워지고 관리자 알림 메일이 오는지 확인합니다. 최초 실행 시 Drive 권한 승인이 필요할 수 있으며, 저장 폴더 ID는 `DRIVE_FOLDER_ID` Script Property에 자동 기록됩니다.
 
 `file://`로 직접 열면 브라우저 CORS 정책으로 호출이 실패할 수 있으므로 GitHub Pages 등 실제 웹서버로 배포한 상태에서 테스트하세요.

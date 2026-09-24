@@ -152,6 +152,7 @@ test('HTML 스크립트 구문·설정·웹훅 부재',()=>{
   }
   const intakeHtml=fs.readFileSync(path.join(root,'index.html'),'utf8'),serviceChoice=intakeHtml.match(/<fieldset id="serviceChoice">([\s\S]*?)<\/fieldset>/)[1];assert(!serviceChoice.includes('$'));assert(!serviceChoice.includes('할인'));
   assert(!intakeHtml.includes('name="continueServiceType"'));assert(intakeHtml.includes("id='continueServiceSummary'"));assert(intakeHtml.includes('다른 서비스를 원하시면 <a href="index.html">처음부터 다시 진행해주세요</a>'));
+  assert(intakeHtml.includes("document.documentElement.classList.add('lead-entry')"));assert(intakeHtml.includes('정보를 확인하고 있습니다...'));assert(intakeHtml.includes('.lead-entry #intake{display:none}'));
   const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
   assert.equal(config.window.SITE_CONFIG.pricing.vehicleOnly,99);
   assert.equal(config.window.SITE_CONFIG.pricing.bundle,199);

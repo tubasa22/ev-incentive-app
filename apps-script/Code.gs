@@ -381,8 +381,17 @@ function submitEligibilityCheck(applicantData){
   withLock_(function(){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r){sh.getRange(r.row,r.m['이메일발송여부']+1).setValue(emailSent?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}});
   return {success:true,leadId:leadId,status:status,emailSent:emailSent};
 }
+function findLeadRow_(leadId){
+  var sh=ensure_('Leads',LEAD_HEADERS),m=map_(sh),last=sh.getLastRow(),column=m['리드ID'];
+  if(last<=1||column===undefined)return null;
+  var range=sh.getRange(2,column+1,last-1,1);
+  if(typeof range.createTextFinder!=='function')return findRow_(sh,'리드ID',leadId);
+  var cell=range.createTextFinder(String(leadId||'')).matchEntireCell(true).useRegularExpression(false).findNext();
+  if(!cell)return null;
+  return {row:cell.getRow(),data:sh.getRange(cell.getRow(),1,1,sh.getLastColumn()).getValues()[0],m:m};
+}
 function getLeadForContinue(leadId){
-  var r=findRow_(sheets_().leads,'리드ID',String(leadId||''));
+  var r=findLeadRow_(String(leadId||''));
   if(!r)return {success:false,error:'유효하지 않거나 이미 처리된 링크입니다. 다시 자격 확인을 진행해주세요.'};
   var status=String(r.data[r.m['리드상태']]);
   if(status==='전환완료')return {success:false,error:'이미 처리된 신청입니다'};
