@@ -18,7 +18,7 @@ function setupDealerUi(){
 setupDealerUi();
 function setupLeadUi(){
   const tab=document.createElement('button');tab.dataset.tab='leads';tab.textContent='리드 관리';$('#tabs').insertBefore(tab,$('[data-tab="review"]'));
-  $('#app').insertAdjacentHTML('beforeend','<section id="leads" class="view"><div class="panel"><h2>무료 자격확인 리드 관리</h2><p>고객 이메일에는 구체적인 프로그램명이나 예상금액을 보내지 않습니다.</p><div class="actions"><select id="leadStatus"><option>전체</option><option>가능성있음</option><option>부적격</option><option>전환완료</option></select><button id="loadLeads">조회</button></div><p id="leadMessage"></p><div class="scroll"><table><thead><tr><th>생성일시</th><th>이름</th><th>연락처</th><th>이메일</th><th>추천가격유형</th><th>상태</th><th>이메일</th><th>관리</th></tr></thead><tbody id="leadRows"></tbody></table></div></div></section>');
+  $('#app').insertAdjacentHTML('beforeend','<section id="leads" class="view"><div class="panel"><h2>무료 자격확인 리드 관리</h2><p>고객 이메일에는 구체적인 프로그램명이나 예상금액을 보내지 않습니다.</p><div class="actions"><select id="leadStatus"><option>전체</option><option>가능성있음</option><option>부적격</option><option>전환완료</option></select><button id="loadLeads">조회</button></div><p id="leadMessage"></p><div class="scroll"><table><thead><tr><th>생성일시</th><th>이름</th><th>연락처</th><th>이메일</th><th>유입경로</th><th>추천가격유형</th><th>상태</th><th>이메일</th><th>관리</th></tr></thead><tbody id="leadRows"></tbody></table></div></div></section>');
 }
 setupLeadUi();
 function arrangeAdminTabs(){
@@ -36,7 +36,7 @@ $('#adminForm').onsubmit=async event=>{event.preventDefault();let data=Object.fr
 async function loadLeads(){
   try{
     const leads=(await api('listLeads',{status:$('#leadStatus').value})).leads,names={vehicleOnly:'차량만 ($99)',chargerOnly:'충전기만 ($149)',bundle:'번들 ($199)'};
-    $('#leadRows').innerHTML=leads.map(lead=>'<tr><td>'+esc(lead.createdAt)+'</td><td>'+esc(lead.name)+'</td><td>'+esc(lead.phone)+'</td><td>'+esc(lead.email)+'</td><td>'+esc(names[lead.priceType]||'해당 없음')+'</td><td>'+esc(lead.status)+(lead.needsResend?' <span class="status-off">재발송 필요</span>':'')+'</td><td>'+(lead.emailSent?'발송':'미발송')+'</td><td>'+(lead.status==='가능성있음'?'<button class="resendLead" data-id="'+esc(lead.leadId)+'">안내 이메일 재발송</button>':'-')+'</td></tr>').join('')||'<tr><td colspan="8">해당 상태의 리드가 없습니다.</td></tr>';
+    $('#leadRows').innerHTML=leads.map(lead=>'<tr><td>'+esc(lead.createdAt)+'</td><td>'+esc(lead.name)+'</td><td>'+esc(lead.phone)+'</td><td>'+esc(lead.email)+'</td><td>'+esc((lead.utmSource||lead.utmCampaign)?((lead.utmSource||'소스 미지정')+(lead.utmCampaign?' / '+lead.utmCampaign:'')):'직접')+'</td><td>'+esc(names[lead.priceType]||'해당 없음')+'</td><td>'+esc(lead.status)+(lead.needsResend?' <span class="status-off">재발송 필요</span>':'')+'</td><td>'+(lead.emailSent?'발송':'미발송')+'</td><td>'+(lead.status==='가능성있음'?'<button class="resendLead" data-id="'+esc(lead.leadId)+'">안내 이메일 재발송</button>':'-')+'</td></tr>').join('')||'<tr><td colspan="9">해당 상태의 리드가 없습니다.</td></tr>';
     $$('.resendLead').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api('resendLeadEmail',{leadId:button.dataset.id});$('#leadMessage').className='success';$('#leadMessage').textContent='안내 이메일을 재발송했습니다.';loadLeads()}catch(error){$('#leadMessage').className='error';$('#leadMessage').textContent=error.message;button.disabled=false;}});
   }catch(error){$('#leadMessage').className='error';$('#leadMessage').textContent=error.message;}
 }

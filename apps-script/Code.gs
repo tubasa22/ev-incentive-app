@@ -8,7 +8,7 @@ var PROGRAM_HEADERS=['프로그램명','활성여부','마지막업데이트일�
 var APPLICATION_HEADERS=['지원ID','지원일시','업체명/이름','연락처','이메일','서비스가능지역','라이선스번호','라이선스종류','라이선스만료일','본드회사명','본드번호','본드보장금액','본드만료일','경력/한줄소개','지원상태','검토일시','검토메모','컨트랙터ID','등록방식'];
 var ADMIN_HEADERS=['관리자ID','이름','이메일','비밀번호','활성여부','생성일시','최종로그인일시'];
 var DEALER_HEADERS=['딜러ID','딜러명','담당자명','연락처','이메일','참여프로그램','소개비금액','활성여부','생성일시','최종수정일시'];
-var LEAD_HEADERS=['리드ID','생성일시','이름','연락처','이메일','신청자정보JSON','매칭결과JSON','추천가격유형','리드상태','이메일발송여부','최종수정일시'];
+var LEAD_HEADERS=['리드ID','생성일시','이름','연락처','이메일','신청자정보JSON','매칭결과JSON','추천가격유형','리드상태','이메일발송여부','최종수정일시','UTM소스','UTM매체','UTM캠페인','UTM콘텐츠'];
 var LADWP_INSTALL_STEPS=[{step:1,title:'딜러 상담',desc:'EV 딜러십에서 전기기사·LADWP 상담 필요 여부 확인 (일부 제조사는 무료 평가 제공)'},{step:2,title:'LADWP 요금제 문의',desc:'고객이 LADWP에 연락해 미터·요금제 옵션 상담 (전기기사 시공 착수 전 필수 - 순서 바뀌면 지연됨)'},{step:3,title:'전기기사 배선 점검',desc:'전기기사가 기존 배선 용량 점검, Level 2 충전기 설치 타당성 확인'},{step:4,title:'온라인 신청서 제출',desc:'LADWP Charging Station Request 온라인 양식 제출 (전기허가 취득 전에 반드시 먼저 제출 - 순서 중요). 제출 후 영업일 5일 이내 LADWP 담당자(ESR) 자동 배정'},{step:5,title:'LADWP 현장평가',desc:'LADWP 담당자가 현장 방문해 시스템 업그레이드 필요 여부 평가'},{step:6,title:'전기허가 취득 및 시공',desc:'전기기사가 미터·요금제 옵션 확정 후 전기허가(Electrical Permit) 취득, 시공 완료 후 검사 요청'},{step:7,title:'LADBS 검사',desc:'LA시 건축안전국(LADBS)이 시공 검사, 통과 시 LADWP로 승인 전달'},{step:8,title:'LADWP 최종 설치',desc:'LADWP 승인 후 미터/시스템 작업 완료. 패널업그레이드 없으면 영업일 5~10일, 있으면 더 소요'}];
 
 function estimateAmount_(value){if((typeof value!=='string'&&typeof value!=='number')||String(value).trim()==='')throw Error('예상공사비와 예상지원금한도를 입력해주세요.');var n=Number(value);if(!isFinite(n)||n<0||n>999999999)throw Error('견적 금액은 0 이상 999,999,999 이하의 숫자로 입력해주세요.');return Math.round(n*100)/100;}
@@ -400,8 +400,9 @@ function sendLeadEmail_(lead){
   }
   MailApp.sendEmail({to:lead.email,subject:subject,body:body,htmlBody:html,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
 }
-function submitEligibilityCheck(applicantData){
+function submitEligibilityCheck(applicantData,utmData){
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
+  var utm=utmData&&typeof utmData==='object'?utmData:{};
   if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 연락처, 이메일을 확인해주세요.');
   validateIntakeApplicant_(applicant);
   delete applicant.applicationConsent;delete applicant.applicationConsentAt;delete applicant.applicationConsentSignature;delete applicant.paymentToken;
@@ -409,7 +410,7 @@ function submitEligibilityCheck(applicantData){
   var applicantJson=JSON.stringify(applicant),matchingJson=JSON.stringify(matching);
   if(applicantJson.length>45000||matchingJson.length>45000)throw Error('입력 내용이 너무 깁니다. 내용을 줄여주세요.');
   var now=new Date(),leadId='LEAD-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMddHHmmss')+'-'+Utilities.getUuid().replace(/-/g,'');
-  withLock_(function(){sheets_().leads.appendRow([leadId,now,applicant.name,applicant.phone,applicant.email,applicantJson,matchingJson,priceType,status,'아니오',now]);});
+  withLock_(function(){sheets_().leads.appendRow([leadId,now,applicant.name,applicant.phone,applicant.email,applicantJson,matchingJson,priceType,status,'아니오',now,String(utm.source||'').slice(0,500),String(utm.medium||'').slice(0,500),String(utm.campaign||'').slice(0,500),String(utm.content||'').slice(0,500)]);});
   var emailSent=false;
   try{sendLeadEmail_({leadId:leadId,name:applicant.name,email:applicant.email,status:status,priceType:priceType});emailSent=true;Logger.log('자격확인 안내 이메일 발송 성공: '+leadId);}catch(error){Logger.log('자격확인 안내 이메일 발송 실패: '+leadId+', 오류='+String(error&&error.message||error));}
   withLock_(function(){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r){sh.getRange(r.row,r.m['이메일발송여부']+1).setValue(emailSent?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}});
@@ -435,7 +436,7 @@ function getLeadForContinue(leadId){
 function markLeadConverted_(leadId){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r&&r.data[r.m['리드상태']]!=='전환완료'){sh.getRange(r.row,r.m['리드상태']+1).setValue('전환완료');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}}
 function listLeads(d){
   if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var wanted=String(d.status||'전체'),x=rows_(sheets_().leads),now=Date.now(),out=[];
-  for(var i=1;i<x.v.length;i++){var r=x.v[i],status=String(r[x.m['리드상태']]);if(wanted!=='전체'&&wanted!==status)continue;var created=r[x.m['생성일시']],createdMs=created instanceof Date?created.getTime():Date.parse(created);out.push({leadId:r[x.m['리드ID']],createdAt:date_(created),name:r[x.m['이름']],phone:r[x.m['연락처']],email:r[x.m['이메일']],priceType:r[x.m['추천가격유형']]||'',status:status,emailSent:r[x.m['이메일발송여부']]==='예',needsResend:status==='가능성있음'&&isFinite(createdMs)&&now-createdMs>=7*86400000,updatedAt:date_(r[x.m['최종수정일시']])});}
+  for(var i=1;i<x.v.length;i++){var r=x.v[i],status=String(r[x.m['리드상태']]);if(wanted!=='전체'&&wanted!==status)continue;var created=r[x.m['생성일시']],createdMs=created instanceof Date?created.getTime():Date.parse(created);out.push({leadId:r[x.m['리드ID']],createdAt:date_(created),name:r[x.m['이름']],phone:r[x.m['연락처']],email:r[x.m['이메일']],priceType:r[x.m['추천가격유형']]||'',status:status,emailSent:r[x.m['이메일발송여부']]==='예',utmSource:r[x.m['UTM소스']]||'',utmMedium:r[x.m['UTM매체']]||'',utmCampaign:r[x.m['UTM캠페인']]||'',utmContent:r[x.m['UTM콘텐츠']]||'',needsResend:status==='가능성있음'&&isFinite(createdMs)&&now-createdMs>=7*86400000,updatedAt:date_(r[x.m['최종수정일시']])});}
   return out.sort(function(a,b){return String(b.createdAt).localeCompare(String(a.createdAt));});
 }
 function resendLeadEmail(leadId,d){
@@ -457,6 +458,8 @@ var doPostBeforeProgramDac_=doPost;doPost=function(e){try{var d=JSON.parse((e.po
 var doPostBeforeManualApplication_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='adminSubmitContractorApplication'){if(!admin_(d))return out_({success:false,error:'관리자 인증이 필요합니다.'});return out_(adminSubmitContractorApplication(d.data||{},d.sendConfirmation===true,d));}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeManualApplication_(e);};
 
 var doPostBeforeContractorLoginLog_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='contractorLogin'){var success=validateContractorLogin(d.contractorId,d.accessCode);if(!success)Logger.log('contractorLogin 인증 실패: contractorId='+d.contractorId);return out_({success:success});}}catch(x){return out_({success:false,error:x.message});}return doPostBeforeContractorLoginLog_(e);};
+
+var doPostBeforeUtmLead_=doPost;doPost=function(e){try{var d=JSON.parse((e.postData&&e.postData.contents)||'{}');if(d.action==='submitEligibilityCheck')return out_(submitEligibilityCheck(d.applicantData,d.utm));}catch(x){return out_({success:false,error:x.message});}return doPostBeforeUtmLead_(e);};
 
 /* 표시 전용: 현재 요금으로 추정하지 않고 실제 저장된 금액만 사용합니다. */
 function paymentSummary_(applicant){

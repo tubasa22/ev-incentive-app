@@ -103,7 +103,8 @@ test('공개 createCase 우회 차단',()=>{
 });
 test('무료 자격확인 리드·이메일·결제 후 전환 분리',()=>{
   const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
-  const checked=e.ctx.submitEligibilityCheck(applicant);assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
+  const checked=e.ctx.submitEligibilityCheck(applicant,{source:'meta',medium:'paid_social',campaign:'가을캠페인',content:'영상A'});assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
+  const leadSheet=e.tables.get('Leads'),leadMap=e.ctx.map_(leadSheet);assert.equal(leadSheet.data[1][leadMap['UTM소스']],'meta');assert.equal(leadSheet.data[1][leadMap['UTM매체']],'paid_social');assert.equal(leadSheet.data[1][leadMap['UTM캠페인']],'가을캠페인');assert.equal(leadSheet.data[1][leadMap['UTM콘텐츠']],'영상A');
   assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(e.mails[0].body.includes('선택하신 서비스: 차량 교체/구매 지원 / 이용료: $99'));assert(e.mails[0].body.includes('둘 다: $199 (개별 이용 대비 $49 할인)'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(e.mails[0].htmlBody.includes('계속 진행하기'));
   const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'vehicleOnly');
   const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'vehicleOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
@@ -170,7 +171,14 @@ test('HTML 스크립트 구문·설정·웹훅 부재',()=>{
   assert.equal(config.window.SITE_CONFIG.stripe.test.paymentLinkChargerOnly,'https://buy.stripe.com/test_dRm6oHaVd8GG4L21R42kw01');
   assert.equal(config.window.SITE_CONFIG.stripe.test.paymentLinkBundle,'https://buy.stripe.com/test_7sY14n5ATg987XeanA2kw02');
   assert(config.window.SITE_CONFIG.stripe.live.paymentLinkVehicleOnly.startsWith('PASTE_'));
+  assert.equal(config.window.SITE_CONFIG.metaPixelId,'PASTE_META_PIXEL_ID_HERE');
   assert(!source.includes('handleStripeWebhook'));
+});
+test('UTM은 세션의 첫 유입값을 유지하고 Meta 픽셀 플레이스홀더는 비활성',()=>{
+  const values=new Map(),sessionStorage={getItem:key=>values.has(key)?values.get(key):null,setItem:(key,value)=>values.set(key,String(value))};
+  const context={URLSearchParams,sessionStorage,window:{location:{search:'?utm_source=meta&utm_medium=paid_social&utm_campaign=first'}}};context.window.window=context.window;context.window.sessionStorage=sessionStorage;
+  vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),context);context.SITE_CONFIG=context.window.SITE_CONFIG;context.window.SITE_TRACKING.captureUtm();context.window.location.search='?utm_source=google&utm_content=creative-b';context.window.SITE_TRACKING.captureUtm();
+  assert.equal(JSON.stringify(context.window.SITE_TRACKING.getUtm()),JSON.stringify({source:'meta',medium:'paid_social',campaign:'first',content:'creative-b'}));assert.equal(context.window.SITE_TRACKING.initMetaPixel(true),false);
 });
 test('환불 72시간 경계·제출상태·누락/미래 시각·이력 판별',()=>{
   const e=environment(),now=Date.now();
