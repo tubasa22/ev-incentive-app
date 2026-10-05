@@ -1,0 +1,13 @@
+{
+  "name": "clean-ev-social-images",
+  "private": true,
+  "version": "1.0.0",
+  "description": "클린EV 소셜 이미지 재생성 도구",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.15.0"
+  }
+}
+

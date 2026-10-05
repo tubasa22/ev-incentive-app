@@ -56,6 +56,16 @@ Meta 픽셀은 `site-config.js`의 `metaPixelId`에 실제 Pixel ID를 입력하
 
 소셜 광고(페이스북 등)의 도착 URL은 GitHub Pages의 `/landing.html`을 사용합니다. 랜딩 페이지의 “무료 자격 확인하기” 버튼은 고객 인테이크 화면인 `/index.html`로 연결됩니다.
 
+## 페이스북 페이지 이미지
+
+페이스북 프로필·커버와 링크 공유용 PNG는 `assets/social/`에 있습니다. 기존 `assets/logo-icon.svg`와 `assets/clean-ev-hero.png`만 사용하며, 사이트 HTML이나 Apps Script와 독립되어 있습니다.
+
+- `profile-1000x1000.png`
+- `cover-1640x624.png`
+- `share-1200x630.png`
+
+재생성 방법은 `tools/social-images/README.md`를 참고하세요. 렌더러는 Pretendard 로딩 완료 후 캡처하고 PNG 해상도를 자동 검증합니다.
+
 ## 협력업체 지원서 및 검토
 
 컨트랙터 로그인 실패 시 Apps Script 실행 기록에 ID 미존재, 비활성 업체, 액세스코드 불일치 중 정확한 원인이 기록됩니다. 현재는 장애 진단을 위해 액세스코드 원문도 임시 기록하므로 운영 안정화 후 마스킹해야 합니다.
@@ -161,6 +171,7 @@ LADWP 관할 충전기 케이스를 배정받은 컨트랙터에게는 포털에
 
 ## 기능 목록
 
+- [x] 페이스북 프로필·커버·공유 PNG 및 독립형 재생성 도구
 - [x] LA·OC·사우스베이 중심 주력 프로그램 우선순위와 DCAP/CALeVIP 후순위 표시
 - [x] 관리자 전용 제휴 딜러 관리·MyFirstEV 리드 소개·소개비 독립 추적
 - [x] CC4A/DCAP 2024-25 기준 FPL·차종별 금액·조건부 대안 및 관리자 DAC/관할 수동확인 메모
