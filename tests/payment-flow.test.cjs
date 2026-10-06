@@ -54,12 +54,12 @@ function environment(){
   });
   vm.runInContext(source,ctx);
   ctx.withLock_(()=>ctx.sheets_());
-  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',housing:'자가',residenceType:'단독주택',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',serviceType:'vehicleOnly',wantsCharger:'no',purchaseType:'new',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
-  function pending(charger=false,testMode=false){
-    return ctx.createPendingPayment({...applicant,serviceType:charger?'bundle':'vehicleOnly',wantsCharger:charger?'yes':'no'},{results:[]},charger?'bundle':'vehicleOnly',testMode).token;
+  const applicant={name:'테스트 신청자',phone:'213-555-0100',email:'test@example.com',zip:'90001',electricUtility:'LADWP',housing:'자가',residenceType:'단독주택',household:'2',income:'10000',incomeYear:'2025',vehicleYear:'2010',fuel:'gas',vehicleOwned:'yes',hasEV:'no',previousApplied:'no',serviceType:'chargerOnly',wantsCharger:'yes',purchaseType:'charger',applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString(),serviceFee:1};
+  function pending(unused=false,testMode=false){
+    return ctx.createPendingPayment({...applicant},{results:[]},'chargerOnly',testMode).token;
   }
   function paid(token,changes={}){
-    session={id:'cs_test_'+crypto.randomBytes(8).toString('hex'),client_reference_id:token,payment_status:'paid',status:'complete',mode:'payment',currency:'usd',amount_total:9900,livemode:false,...changes};
+    session={id:'cs_test_'+crypto.randomBytes(8).toString('hex'),client_reference_id:token,payment_status:'paid',status:'complete',mode:'payment',currency:'usd',amount_total:14900,livemode:false,...changes};
     return session.id;
   }
   function age(token){const sh=tables.get('PendingPayments'),row=sh.data.find(row=>row[0]===token);row[1]=new Date(Date.now()-25*3600000);}
@@ -71,11 +71,11 @@ function test(name,fn){fn();checks++;console.log('통과: '+name);}
 test('결제대기 저장·서버 가격·상태 공개 범위',()=>{
   const e=environment(),t=e.pending();assert.equal(e.cases(),0);
   const row=e.tables.get('PendingPayments').data[1];
-  assert.equal(row[3],99);assert.equal(JSON.parse(row[6]).serviceFee,99);
+  assert.equal(row[3],149);assert.equal(JSON.parse(row[6]).serviceFee,149);
   assert.equal(JSON.stringify(e.ctx.getPendingPaymentStatus(t)),JSON.stringify({status:'대기'}));
   assert.equal(JSON.stringify(e.ctx.getPendingPaymentStatus('없는 토큰')),JSON.stringify({status:'없음'}));
-  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,serviceType:'bundle'},{results:[]},'vehicleOnly'));
-  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,applicationConsent:'아니오'},{results:[]},'vehicleOnly'));
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,serviceType:'bundle'},{results:[]},'bundle'));
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,applicationConsent:'아니오'},{results:[]},'chargerOnly'));
   assert.throws(()=>e.ctx.createPendingPayment(e.applicant,{results:[]},'toString'));
 });
 test('미설정 키·미결제·위변조·금액·통화·모드 차단',()=>{
@@ -105,16 +105,19 @@ test('무료 자격확인 리드·이메일·결제 후 전환 분리',()=>{
   const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
   const checked=e.ctx.submitEligibilityCheck(applicant,{source:'meta',medium:'paid_social',campaign:'가을캠페인',content:'영상A'});assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
   const leadSheet=e.tables.get('Leads'),leadMap=e.ctx.map_(leadSheet);assert.equal(leadSheet.data[1][leadMap['UTM소스']],'meta');assert.equal(leadSheet.data[1][leadMap['UTM매체']],'paid_social');assert.equal(leadSheet.data[1][leadMap['UTM캠페인']],'가을캠페인');assert.equal(leadSheet.data[1][leadMap['UTM콘텐츠']],'영상A');
-  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(e.mails[0].body.includes('선택하신 서비스: 차량 교체/구매 지원 / 이용료: $99'));assert(e.mails[0].body.includes('둘 다: $199 (개별 이용 대비 $49 할인)'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(e.mails[0].htmlBody.includes('계속 진행하기'));
-  const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'vehicleOnly');
-  const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'vehicleOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
+  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(e.mails[0].body.includes('선택하신 서비스: 충전기 또는 전기패널 업그레이드 지원 / 이용료: $149'));assert(!e.mails[0].body.includes('둘 다: $199'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(e.mails[0].htmlBody.includes('계속 진행하기'));
+  const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'chargerOnly');
+  const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'chargerOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
   assert.equal(e.cases(),0);const sid=e.paid(pending.token);assert.equal(e.ctx.verifyStripeSession(sid,pending.token).success,true);assert.equal(e.cases(),1);
   assert.equal(e.ctx.getLeadForContinue(checked.leadId).error,'이미 처리된 신청입니다');
 });
-test('부적격 리드도 브랜드 HTML·plain text 이메일 발송',()=>{
-  const e=environment(),applicant={...e.applicant,income:'999999'};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
-  const checked=e.ctx.submitEligibilityCheck(applicant);assert.equal(checked.status,'부적격');assert.equal(e.cases(),0);assert.equal(e.mails.length,1);
-  assert(e.mails[0].body.includes('현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(!e.mails[0].htmlBody.includes('Replace Your Ride'));
+test('서비스 지역 밖은 보류 이메일, 불명확 관할은 관리자 확인으로 분리',()=>{
+  const held=environment(),heldApplicant={...held.applicant,electricUtility:'SCE'};delete heldApplicant.applicationConsent;delete heldApplicant.applicationConsentSignature;delete heldApplicant.applicationConsentAt;
+  const checked=held.ctx.submitEligibilityCheck(heldApplicant);assert.equal(checked.status,'보류');assert.equal(held.cases(),0);assert.equal(held.mails.length,1);assert(held.mails[0].body.includes('LA시(LADWP) 지역의 충전기 설치 지원부터'));assert(held.mails[0].htmlBody.includes('clean-ev-email-logo.png'));
+  const sh=held.tables.get('Leads'),m=held.ctx.map_(sh);assert.equal(sh.data[1][m['사유']],'서비스지역외');assert.equal(held.ctx.getLeadForContinue(checked.leadId).success,false);
+  const program=held.tables.get('ProgramStatus'),pm=held.ctx.map_(program),ladwp=held.ctx.findRow_(program,'프로그램명','서비스유틸리티_LADWP'),sce=held.ctx.findRow_(program,'프로그램명','서비스유틸리티_SCE');assert.equal(ladwp.data[pm['활성여부']],'예');assert.equal(sce.data[pm['활성여부']],'아니오');held.ctx.withLock_(()=>program.getRange(sce.row,pm['활성여부']+1).setValue('예'));assert.equal(held.ctx.submitEligibilityCheck({...heldApplicant,email:'sce@example.com'}).status,'가능성있음');
+  const review=environment(),unknown={...review.applicant,electricUtility:'잘 모르겠음',zip:'99999'};delete unknown.applicationConsent;delete unknown.applicationConsentSignature;delete unknown.applicationConsentAt;
+  const needsReview=review.ctx.submitEligibilityCheck(unknown);assert.equal(needsReview.status,'확인필요');assert.equal(review.mails.length,1);assert.equal(review.mails[0].to,'jdlee.electric@gmail.com');assert(review.mails[0].subject.includes('전력회사 수동 확인 필요'));
 });
 test('정상 결제·토큰 복원·반복 호출·메일 대기',()=>{
   const e=environment(),t=e.pending(),id=e.paid(t);
@@ -125,10 +128,10 @@ test('정상 결제·토큰 복원·반복 호출·메일 대기',()=>{
   assert.equal(e.ctx.getPendingPaymentStatus(t).status,'완료');
   assert.equal(e.ctx.verifyStripeSession(id,'PAY-'+'1'.repeat(32)).success,false);
 });
-test('충전기 $199 검증',()=>{
+test('충전기 $149 검증',()=>{
   const e=environment(),t=e.pending(true);
-  assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,false);
-  assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:19900}),t).success,true);
+  assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:19900}),t).success,false);
+  assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:14900}),t).success,true);
 });
 for(const fail of ['failHistory','failFinalize']){
   test('부분 실패 후 중복 없는 재처리: '+fail,()=>{
@@ -247,17 +250,17 @@ test('환불 UI 배지·완료건 버튼 숨김·문자열 이스케이프',()=>
 });
 test('새 필수 입력 서버 검증과 그룹 결과 Cases 저장',()=>{
   const e=environment();
-  for(const name of ['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied']){
-    assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,[name]:''},{results:[]},'vehicleOnly'),name);
+  for(const name of ['name','phone','email','zip','electricUtility','housing','household','income','incomeYear','serviceType','hasEV','previousApplied']){
+    assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,[name]:''},{results:[]},'chargerOnly'),name);
   }
-  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,household:'0'},{results:[]},'vehicleOnly'));
-  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,panelCapacity:'음수'},{results:[]},'vehicleOnly'));
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,household:'0'},{results:[]},'chargerOnly'));
+  assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,panelCapacity:'음수'},{results:[]},'chargerOnly'));
   const matching={vehiclePrograms:[{id:'RYR',name:'차량 프로그램',amount:12000,reason:'대상',isActive:false}],chargerPrograms:[],mutuallyExclusiveWarning:null};
-  const t=e.ctx.createPendingPayment({...e.applicant,panelCapacity:''},matching,'vehicleOnly').token;
+  const t=e.ctx.createPendingPayment({...e.applicant,panelCapacity:''},matching,'chargerOnly').token;
   assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,true);
   const sh=e.tables.get('Cases'),m=e.ctx.map_(sh);
   const saved=JSON.parse(sh.data[1][m['매칭결과JSON']]);
-  assert(!saved.vehiclePrograms.some(p=>p.id==='DCAP')); // South Coast AQMD 관할은 DCAP 대체 후보 제외
+  assert.equal(saved.vehiclePrograms.length,0);
   assert(!saved.vehiclePrograms.some(p=>p.reason==='대상')); // 클라이언트가 보낸 결과가 아니라 서버 계산
   assert.deepEqual(JSON.parse(sh.data[1][m['매칭프로그램목록(JSON)']]),saved.vehiclePrograms.concat(saved.chargerPrograms));
 });
@@ -269,21 +272,21 @@ test('충전기만 $149·차량 입력 제거·서버 매칭·가격 위변조 �
   assert.equal(row[3],149);assert.equal(stored.serviceFee,149);assert.equal(stored.purchaseType,'charger');
   assert.equal(stored.vehicleYear,undefined);assert.equal(matching.vehiclePrograms.length,0);
   assert.equal(matching.chargerPrograms.length,2);assert(matching.chargerPrograms.some(p=>p.id==='LADWP_CHARGER'));assert(matching.chargerPrograms.some(p=>p.id==='SCAQMD_EV_CHARGING'));
-  assert.equal(e.ctx.verifyStripeSession(e.paid(t),t).success,false);
+  assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:9900}),t).success,false);
   assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:14900}),t).success,true);
   assert.throws(()=>e.ctx.createPendingPayment(a,{results:[]},'bundle'));
   assert.throws(()=>e.ctx.createPendingPayment({...a,serviceType:'bundle'},{results:[]},'bundle'));
 });
 test('기존 withCharger 대기 결제는 $199 확인 유지·신규 생성은 차단',()=>{
   const e=environment(),t=e.pending(true);
-  e.tables.get('PendingPayments').data[1][2]='withCharger';
+  e.tables.get('PendingPayments').data[1][2]='withCharger';e.tables.get('PendingPayments').data[1][3]=199;
   assert.equal(e.ctx.verifyStripeSession(e.paid(t,{amount_total:19900}),t).success,true);
   assert.throws(()=>e.ctx.createPendingPayment({...e.applicant,serviceType:'withCharger'},{results:[]},'withCharger'));
 });
 test('결제 요약은 저장된 유형·금액만 사용하고 검증 응답에 포함',()=>{
   const e=environment(),t=e.pending(),sid=e.paid(t);
   const result=e.ctx.verifyStripeSession(sid,t);
-  assert.deepEqual(JSON.parse(JSON.stringify(result.payment)),{priceType:'vehicleOnly',name:'차량 교체/구매 지원만',amount:99});
+  assert.deepEqual(JSON.parse(JSON.stringify(result.payment)),{priceType:'chargerOnly',name:'충전기·전기패널 업그레이드 지원만',amount:149});
   assert.equal(e.ctx.paymentSummary_({servicePricingType:'bundle',serviceFee:199}).name,'차량 및 충전기·전기패널 업그레이드 지원');
   assert.equal(e.ctx.paymentSummary_({servicePricingType:'chargerOnly'}),null);
   assert.equal(e.ctx.paymentSummary_({servicePricingType:'unknown',serviceFee:149}),null);
@@ -359,6 +362,10 @@ test('관리자 탭은 업무 흐름 순서로 배치되고 이름 호칭을 중
   const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
   assert(admin.includes("const order=['dashboard','leads','review','assign','contractors','applications','dealers','payments','programs','admins']"));
   assert(admin.includes("honorific=/님$/.test(adminName)?'':'님'"));assert(!admin.includes("(result.adminName||'관리자')+'님 로그인 중'"));
+});
+test('관리자 리드·프로그램 화면은 보류/확인필요와 서비스 재개 배너를 제공',()=>{
+  const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+  for(const text of ['<option>보류</option>','<option>확인필요</option>','<th>사유</th>','heldLeadCount','건의 보류 리드가 있습니다. 다시 안내하시겠습니까?','보류 리드 보기'])assert(admin.includes(text));
 });
 test('LADWP 8단계는 배정 컨트랙터만 순서대로 기록',()=>{
   const e=environment(),contractors=e.tables.get('Contractors'),cm=e.ctx.map_(contractors),contractorRow=Array(contractors.getLastColumn()).fill('');

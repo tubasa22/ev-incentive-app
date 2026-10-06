@@ -6,10 +6,10 @@ const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
 const contractor=fs.readFileSync(path.join(root,'contractor.html'),'utf8');
 const about=fs.readFileSync(path.join(root,'about.html'),'utf8');
 const config={window:{}};vm.runInNewContext(fs.readFileSync(path.join(root,'site-config.js'),'utf8'),config);
-const required=['name','phone','email','zip','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied'];
+const required=['name','phone','email','zip','electricUtility','housing','household','income','incomeYear','vehicleYear','fuel','vehicleOwned','purchaseType','serviceType','hasEV','previousApplied'];
 for(const name of required){
-  const tag=html.match(new RegExp('<(?:input|select)\\b[^>]*\\bname="'+name+'"[^>]*>'))?.[0];
-  assert(tag&&/\brequired\b/.test(tag),name+' 필수 설정');
+  const tags=[...html.matchAll(new RegExp('<(?:input|select)\\b[^>]*\\bname="'+name+'"[^>]*>','g'))].map(match=>match[0]);
+  assert(tags.some(tag=>/\brequired\b/.test(tag)),name+' 필수 설정');
 }
 assert(!/\brequired\b/.test(html.match(/<input[^>]*name="panelCapacity"[^>]*>/)[0]));
 const desiredTag=html.match(/<select[^>]*name="desiredVehicle"[^>]*>/)?.[0];assert(desiredTag&&!/\brequired\b/.test(desiredTag));
@@ -17,7 +17,7 @@ for(const value of ['phev','zev','zem','ebike'])assert(html.includes('<option va
 console.log('통과: 필수 필드 전수 점검·패널 용량 선택 입력');
 const ctx=vm.createContext({SITE_CONFIG:config.window.SITE_CONFIG,window:{},console,fetch:async()=>({json:async()=>({success:false})})});
 vm.runInContext(html.slice(html.indexOf('const CONFIG='),html.indexOf('function show(')),ctx);
-const applicant={income:'10000',household:'2',zip:'90001',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',serviceType:'bundle',wantsCharger:'yes'};
+const applicant={income:'10000',household:'2',zip:'90001',electricUtility:'LADWP',vehicleYear:'2010',vehicleOwned:'yes',fuel:'gas',smog:'yes',purchaseType:'new',hasEV:'no',serviceType:'bundle',wantsCharger:'yes'};
 const result=ctx.matchPrograms(applicant);
 assert.equal(result.vehiclePrograms.length,3);assert.equal(result.chargerPrograms.length,3);assert(!result.vehiclePrograms.some(p=>p.id==='DCAP'));
 const ladwp=result.chargerPrograms.find(p=>p.id==='LADWP_CHARGER');assert.equal(ladwp.thirdPartyAssignment,true);assert(ladwp.thirdPartyAssignmentNote.includes('제3자 지급대상'));assert.equal(ladwp.applicationWindowChargerDays,null);assert.equal(ladwp.usedVehicleWindowDays,365);
@@ -83,7 +83,7 @@ assert.equal(vm.runInContext('JSON.stringify({fpl:CONFIG.fpl,zipMap:CONFIG.zipMa
 assert.equal(JSON.stringify(vm.runInContext('CC4A_RULES',ctx)),JSON.stringify(backend.CC4A_RULES));
 assert.equal(JSON.stringify(vm.runInContext('UTILITY_RULES',ctx)),JSON.stringify(backend.UTILITY_RULES));
 assert.equal(JSON.stringify(vm.runInContext('SCAQMD_EV_CHARGING',ctx)),JSON.stringify(backend.SCAQMD_EV_CHARGING));
-assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.CASE_HEADERS.includes('DAC상태'));assert(backend.CASE_HEADERS.includes('LADWP제3자지정안내여부'));assert(backend.CASE_HEADERS.includes('LADWP절차단계'));
+assert(backend.PROGRAM_HEADERS.includes('다음확인예정일'));assert(backend.PROGRAM_NAMES.includes('SCAQMD_충전기리베이트'));assert(backend.PROGRAM_NAMES.includes('서비스유틸리티_LADWP'));assert(backend.PROGRAM_NAMES.includes('서비스유틸리티_SCE'));assert(backend.LEAD_HEADERS.includes('사유'));assert(backend.CASE_HEADERS.includes('DAC상태'));assert(backend.CASE_HEADERS.includes('LADWP제3자지정안내여부'));assert(backend.CASE_HEADERS.includes('LADWP절차단계'));
 assert(html.includes('ladwpAssignmentNotice'));assert(html.includes('고객님이 부담하시는 실질 비용이 줄어듭니다'));assert(admin.includes('제3자 지급 지정 가능'));assert(admin.includes('setLadwpThirdPartyGuidance'));
 assert.equal(backend.getLadwpSteps().length,8);assert(backend.getLadwpSteps()[3].desc.includes('전기허가 취득 전에 반드시 먼저 제출'));
 assert(html.includes('name="residenceType"'));assert(html.includes('다세대주택(아파트·콘도)'));assert(contractor.includes('updateLadwpStep'));assert(contractor.includes('다세대주택 참고'));assert(contractor.includes('온라인 신청서(4단계)'));assert(admin.includes('8단계 중'));

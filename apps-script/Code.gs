@@ -4,11 +4,11 @@ var CASE_HEADERS=['CaseID','생성일시','담당자','신청자정보(JSON)','�
 var HISTORY_HEADERS=['CaseID','타임스탬프','이전상태','새상태','메모','담당자'];
 var CONTRACTOR_HEADERS=['컨트랙터ID','이름','연락처','액세스코드','계약시작일','계약서Drive링크','라이선스사본링크','본드사본링크','사업자증빙링크','건당단가','활성여부','생성일시','최종수정일시','라이선스번호','라이선스종류','라이선스만료일','본드회사명','본드번호','본드보장금액','본드만료일','계약서동의여부','계약서동의일시','계약서버전','라이선스수동확인여부','라이선스수동확인일시','본인확인방식','OTP코드','OTP발급시각','OTP검증시각','이메일'];
 var PAYMENT_HEADERS=['CaseID','컨트랙터ID','하청비지급액','하청비지급일','하청비지급상태','정부정산수령액','정부정산수령일','정부정산수령상태'];
-var PROGRAM_HEADERS=['프로그램명','활성여부','마지막업데이트일시','메모','다음확인예정일'];var PROGRAM_NAMES=['RYR','CC4A','DCAP','MyFirstEV','CALeVIP','유틸리티리베이트','SCAQMD_충전기리베이트'];
+var PROGRAM_HEADERS=['프로그램명','활성여부','마지막업데이트일시','메모','다음확인예정일'];var PROGRAM_NAMES=['RYR','CC4A','DCAP','MyFirstEV','CALeVIP','유틸리티리베이트','SCAQMD_충전기리베이트','서비스유틸리티_LADWP','서비스유틸리티_SCE'];
 var APPLICATION_HEADERS=['지원ID','지원일시','업체명/이름','연락처','이메일','서비스가능지역','라이선스번호','라이선스종류','라이선스만료일','본드회사명','본드번호','본드보장금액','본드만료일','경력/한줄소개','지원상태','검토일시','검토메모','컨트랙터ID','등록방식'];
 var ADMIN_HEADERS=['관리자ID','이름','이메일','비밀번호','활성여부','생성일시','최종로그인일시'];
 var DEALER_HEADERS=['딜러ID','딜러명','담당자명','연락처','이메일','참여프로그램','소개비금액','활성여부','생성일시','최종수정일시'];
-var LEAD_HEADERS=['리드ID','생성일시','이름','연락처','이메일','신청자정보JSON','매칭결과JSON','추천가격유형','리드상태','이메일발송여부','최종수정일시','UTM소스','UTM매체','UTM캠페인','UTM콘텐츠'];
+var LEAD_HEADERS=['리드ID','생성일시','이름','연락처','이메일','신청자정보JSON','매칭결과JSON','추천가격유형','리드상태','이메일발송여부','최종수정일시','UTM소스','UTM매체','UTM캠페인','UTM콘텐츠','사유'];
 var LADWP_INSTALL_STEPS=[{step:1,title:'딜러 상담',desc:'EV 딜러십에서 전기기사·LADWP 상담 필요 여부 확인 (일부 제조사는 무료 평가 제공)'},{step:2,title:'LADWP 요금제 문의',desc:'고객이 LADWP에 연락해 미터·요금제 옵션 상담 (전기기사 시공 착수 전 필수 - 순서 바뀌면 지연됨)'},{step:3,title:'전기기사 배선 점검',desc:'전기기사가 기존 배선 용량 점검, Level 2 충전기 설치 타당성 확인'},{step:4,title:'온라인 신청서 제출',desc:'LADWP Charging Station Request 온라인 양식 제출 (전기허가 취득 전에 반드시 먼저 제출 - 순서 중요). 제출 후 영업일 5일 이내 LADWP 담당자(ESR) 자동 배정'},{step:5,title:'LADWP 현장평가',desc:'LADWP 담당자가 현장 방문해 시스템 업그레이드 필요 여부 평가'},{step:6,title:'전기허가 취득 및 시공',desc:'전기기사가 미터·요금제 옵션 확정 후 전기허가(Electrical Permit) 취득, 시공 완료 후 검사 요청'},{step:7,title:'LADBS 검사',desc:'LA시 건축안전국(LADBS)이 시공 검사, 통과 시 LADWP로 승인 전달'},{step:8,title:'LADWP 최종 설치',desc:'LADWP 승인 후 미터/시스템 작업 완료. 패널업그레이드 없으면 영업일 5~10일, 있으면 더 소요'}];
 
 function estimateAmount_(value){if((typeof value!=='string'&&typeof value!=='number')||String(value).trim()==='')throw Error('예상공사비와 예상지원금한도를 입력해주세요.');var n=Number(value);if(!isFinite(n)||n<0||n>999999999)throw Error('견적 금액은 0 이상 999,999,999 이하의 숫자로 입력해주세요.');return Math.round(n*100)/100;}
@@ -118,6 +118,8 @@ function pendingSheet_(){return ensure_('PendingPayments',PENDING_PAYMENT_HEADER
 function validPaymentToken_(token){return /^PAY-[a-f0-9]{32}$/.test(String(token||''));}
 function validStripeSession_(id){return /^cs_(test_|live_)[A-Za-z0-9]+$/.test(String(id||''));}
 function createPendingPayment(applicantData,matchingResult,priceType,testMode){
+  if(priceType!=='chargerOnly')throw Error('현재는 LADWP 관할 충전기 설치 지원만 결제할 수 있습니다.');
+  if(!serviceUtilityDecision_(applicantData||{},getProgramStatuses()).allowed)throw Error('현재 서비스 가능 지역의 충전기 설치 신청만 결제할 수 있습니다.');
   if(!Object.prototype.hasOwnProperty.call(STRIPE_PRICES,priceType))throw Error('가격 유형을 확인해주세요.');
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
   if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 전화번호, 이메일을 확인해주세요.');
@@ -144,6 +146,7 @@ function createPendingPayment(applicantData,matchingResult,priceType,testMode){
   });
 }
 function createPendingPaymentFromLead(leadId,priceType,consentData,additionalData,testMode){
+  if(priceType!=='chargerOnly')throw Error('현재는 LADWP 관할 충전기 설치 지원만 결제할 수 있습니다.');
   var lead=findRow_(sheets_().leads,'리드ID',String(leadId||''));
   if(!lead||lead.data[lead.m['리드상태']]!=='가능성있음')throw Error('유효하지 않거나 이미 처리된 신청입니다. 다시 자격 확인을 진행해주세요.');
   var applicant=json_(lead.data[lead.m['신청자정보JSON']],null);
@@ -313,11 +316,11 @@ function matchingPrograms_(matching){
 }
 function validateIntakeApplicant_(a){
   var only=a.serviceType==='chargerOnly';
-  var required=['name','phone','email','zip','housing','household','income','incomeYear','serviceType','hasEV','previousApplied'];
+  var required=['name','phone','email','zip','electricUtility','housing','household','income','incomeYear','serviceType','hasEV','previousApplied'];
   if(a.serviceType!=='vehicleOnly')required.push('residenceType');
   if(!only)required=required.concat(['vehicleYear','fuel','vehicleOwned','purchaseType']);
   if(required.some(function(k){return a[k]===undefined||a[k]===null||String(a[k]).trim()==='';}))throw Error('자격 확인에 필요한 필수 항목을 모두 입력해주세요.');
-  var options={housing:['자가','렌트'],residenceType:['단독주택','다세대주택'],serviceType:['vehicleOnly','chargerOnly','bundle'],hasEV:['yes','no'],previousApplied:['yes','no']};
+  var options={housing:['자가','렌트'],electricUtility:['LADWP','SCE','그 외','잘 모르겠음'],residenceType:['단독주택','다세대주택'],serviceType:['vehicleOnly','chargerOnly','bundle'],hasEV:['yes','no'],previousApplied:['yes','no']};
   if(!only){options.fuel=['gas','diesel','hybrid','ev'];options.vehicleOwned=['yes','no'];options.purchaseType=['new','used'];}
   if(a.desiredVehicle!==undefined&&String(a.desiredVehicle).trim()!=='')options.desiredVehicle=['phev','zev','zem','ebike'];
   Object.keys(options).forEach(function(k){if(a[k]!==undefined&&a[k]!==''&&options[k].indexOf(a[k])<0)throw Error('신청 항목의 선택값을 확인해주세요.');});
@@ -361,6 +364,7 @@ function utilityCandidate(c){if(c.zip.utility==='SCE'){var r=UTILITY_RULES.SCE_C
 function scaqmdCandidate(c){return {id:'SCAQMD_EV_CHARGING',name:'South Coast AQMD 주거용 EV 충전 리베이트',amount:SCAQMD_EV_CHARGING.amount,ok:c.zip.district==='South Coast AQMD',reason:SCAQMD_EV_CHARGING.incomeRequirement,referenceNotes:[SCAQMD_EV_CHARGING.statusNote,'면허 전기기사·허가 필요, 설치 후 3년 유지, 선착순'],isActive:liveProgramStatuses.SCAQMD_충전기리베이트!=='아니오',docs:['저소득 증빙','최종 허가서','설치 영수증']}}
 function matchPrograms(d){
   const context={fpl:fplPercent(d.income,d.household),zip:zipInfo(d.zip)};
+  if(['LADWP','SCE'].indexOf(d.electricUtility)>=0)context.zip.utility=d.electricUtility;
   const type=d.serviceType||d.servicePricingType||(d.wantsCharger==='yes'?'bundle':'vehicleOnly');
   const vehicleCandidates=type==='chargerOnly'?[]:['RYR','CC4A','MyFirstEV','DCAP'].map(id=>eligible(id,d,context)).filter(p=>p.ok);
   const primaryDistrict=CC4A_RULES.administeringDistricts[0],includeDcap=context.zip.district!==primaryDistrict;
@@ -392,13 +396,35 @@ function sendLeadEmail_(lead){
   var name=emailHtmlEscape_(lead.name),body='',html='';
   if(possible){
     var service=leadServiceSummary_(lead.priceType),continueUrl=leadPublicBase_()+'/index.html?leadId='+encodeURIComponent(lead.leadId),summary='선택하신 서비스: '+service.name+' / 이용료: $'+service.amount;
-    body=['안녕하세요 '+lead.name+'님,','', '입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.',summary,'', '전체 이용료 안내','- 차량 교체/구매 지원: $99','- 충전기 또는 전기패널 업그레이드 지원: $149','- 둘 다: $199 (개별 이용 대비 $49 할인)','', '다음 단계','1. 아래 링크를 클릭합니다.','2. 신청 대행 동의서를 확인하고 전자서명합니다.','3. 결제 후 정식 신청이 접수됩니다.','', '계속 진행하기: '+continueUrl,'', '구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.'].join('\n');
-    html=buildBrandedEmailHtml_('신청 가능성이 확인되었습니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+name+'</strong>님.<br>입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.</p><div style="margin:0 0 22px;padding:16px 18px;background:#eef6f3;border-left:4px solid #0F5C4C;border-radius:6px"><strong style="display:block;color:#0F5C4C">선택하신 서비스</strong>'+emailHtmlEscape_(service.name)+'<br><strong>이용료: $'+service.amount+'</strong></div><div style="margin:0 0 22px;padding:16px 18px;background:#fff7e8;border-radius:8px"><strong>전체 이용료 안내</strong><br>차량 교체/구매 지원 $99<br>충전기 또는 전기패널 업그레이드 지원 $149<br>둘 다 $199 <span style="color:#0F5C4C;font-weight:bold">(개별 이용 대비 $49 할인)</span></div><h2 style="margin:0 0 12px;font-size:18px;color:#0F5C4C">다음 단계</h2><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>1. 링크 클릭</strong><br>아래 버튼으로 계속 진행합니다.</div><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>2. 동의서 확인</strong><br>신청 대행 동의서를 확인하고 전자서명합니다.</div><div style="margin:0 0 22px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>3. 결제 및 정식 신청</strong><br>결제가 확인되면 정식 신청이 접수됩니다.</div><p style="margin:0 0 22px;text-align:center"><a href="'+emailHtmlEscape_(continueUrl)+'" style="display:inline-block;padding:13px 24px;background:#0F5C4C;color:#ffffff;text-decoration:none;border-radius:7px;font-weight:bold">계속 진행하기</a></p><p style="margin:0;font-size:13px;color:#5C5A54">구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.</p>');
+    body=['안녕하세요 '+lead.name+'님,','', '입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.',summary,'', '다음 단계','1. 아래 링크를 클릭합니다.','2. 신청 대행 동의서를 확인하고 전자서명합니다.','3. 결제 후 정식 신청이 접수됩니다.','', '계속 진행하기: '+continueUrl,'', '구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.'].join('\n');
+    html=buildBrandedEmailHtml_('신청 가능성이 확인되었습니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+name+'</strong>님.<br>입력하신 정보를 확인한 결과 신청 가능한 프로그램이 있는 것으로 보입니다.</p><div style="margin:0 0 22px;padding:16px 18px;background:#eef6f3;border-left:4px solid #0F5C4C;border-radius:6px"><strong style="display:block;color:#0F5C4C">선택하신 서비스</strong>'+emailHtmlEscape_(service.name)+'<br><strong>이용료: $'+service.amount+'</strong></div><h2 style="margin:0 0 12px;font-size:18px;color:#0F5C4C">다음 단계</h2><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>1. 링크 클릭</strong><br>아래 버튼으로 계속 진행합니다.</div><div style="margin:0 0 10px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>2. 동의서 확인</strong><br>신청 대행 동의서를 확인하고 전자서명합니다.</div><div style="margin:0 0 22px;padding:13px 15px;background:#F7F6F1;border-radius:8px"><strong>3. 결제 및 정식 신청</strong><br>결제가 확인되면 정식 신청이 접수됩니다.</div><p style="margin:0 0 22px;text-align:center"><a href="'+emailHtmlEscape_(continueUrl)+'" style="display:inline-block;padding:13px 24px;background:#0F5C4C;color:#ffffff;text-decoration:none;border-radius:7px;font-weight:bold">계속 진행하기</a></p><p style="margin:0;font-size:13px;color:#5C5A54">구체적인 프로그램명과 예상 지원금은 정식 신청 진행 과정에서 담당자가 안내드립니다.</p>');
   }else{
     body=['안녕하세요 '+lead.name+'님,','', '현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다. 프로그램 상황은 계속 바뀌므로, 추후 해당되는 경우 다시 안내드리겠습니다.'].join('\n');
     html=buildBrandedEmailHtml_('문의해주셔서 감사합니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+name+'</strong>님.</p><div style="padding:18px;background:#F7F6F1;border-left:4px solid #0F5C4C;border-radius:6px"><p style="margin:0">현재 입력하신 정보로는 해당하는 프로그램을 찾지 못했습니다.<br>프로그램 상황은 계속 바뀌므로, 추후 해당되는 경우 다시 안내드리겠습니다.</p></div>');
   }
   MailApp.sendEmail({to:lead.email,subject:subject,body:body,htmlBody:html,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
+}
+function sendHeldLeadEmail_(lead){
+  var body='안녕하세요 '+lead.name+'님,\n\n현재는 LA시(LADWP) 지역의 충전기 설치 지원부터 서비스를 시작했습니다. 고객님의 지역은 준비 중이며, 서비스가 시작되면 가장 먼저 안내드리겠습니다.';
+  var html=buildBrandedEmailHtml_('문의해주셔서 감사합니다','<p style="margin:0 0 18px;font-size:16px">안녕하세요, <strong>'+emailHtmlEscape_(lead.name)+'</strong>님.</p><div style="padding:18px;background:#F7F6F1;border-left:4px solid #0F5C4C;border-radius:6px"><p style="margin:0">현재는 LA시(LADWP) 지역의 충전기 설치 지원부터 서비스를 시작했습니다.<br>고객님의 지역은 준비 중이며, 서비스가 시작되면 가장 먼저 안내드리겠습니다.</p></div>');
+  MailApp.sendEmail({to:lead.email,subject:'[클린EV] 문의해주셔서 감사합니다',body:body,htmlBody:html,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
+}
+function notifyUtilityReviewLead_(lead){
+  var subject='[클린EV] 전력회사 수동 확인 필요: '+lead.name;
+  var body=[lead.name+'('+lead.phone+') 고객의 전력회사 관할을 우편번호로 확정하지 못했습니다.','리드ID: '+lead.leadId,'우편번호: '+lead.zip,'입력 전력회사: 잘 모르겠음','관리자 페이지에서 확인해주세요: '+leadPublicBase_()+'/admin.html'].join('\n');
+  MailApp.sendEmail({to:APP_CONFIG.contactEmail,subject:subject,body:body,name:APP_CONFIG.brandName,replyTo:APP_CONFIG.contactEmail});
+}
+function determineUtility_(zip){var mapped=MATCH_CONFIG.zipMap[String(zip||'').slice(0,3)],utility=mapped?String(mapped[1]||'확인 필요'):'확인 필요';return {utility:utility,confident:utility==='LADWP'||utility==='SCE'};}
+function serviceUtilityDecision_(applicant,statuses){
+  var selected=String(applicant.electricUtility||''),resolved=selected,reason='';
+  if(selected==='잘 모르겠음'){
+    var estimated=determineUtility_(applicant.zip);
+    if(!estimated.confident)return {allowed:false,status:'확인필요',reason:'전력회사확인필요',utility:estimated.utility};
+    resolved=estimated.utility;reason='우편번호추정';
+  }
+  if(resolved!=='LADWP'&&resolved!=='SCE')return {allowed:false,status:'보류',reason:'서비스지역외',utility:resolved};
+  if(statuses['서비스유틸리티_'+resolved]!=='예')return {allowed:false,status:'보류',reason:'서비스지역외',utility:resolved};
+  return {allowed:true,status:'가능성있음',reason:reason,utility:resolved};
 }
 function submitEligibilityCheck(applicantData,utmData){
   var applicant=JSON.parse(JSON.stringify(applicantData||{}));
@@ -406,13 +432,19 @@ function submitEligibilityCheck(applicantData,utmData){
   if(!String(applicant.name||'').trim()||!String(applicant.phone||'').trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(applicant.email||'')))throw Error('이름, 연락처, 이메일을 확인해주세요.');
   validateIntakeApplicant_(applicant);
   delete applicant.applicationConsent;delete applicant.applicationConsentAt;delete applicant.applicationConsentSignature;delete applicant.paymentToken;
-  var matching=calculateMatching_(applicant,getProgramStatuses()),priceType=recommendedLeadPriceType_(matching),status=priceType?'가능성있음':'부적격';
+  var statuses=getProgramStatuses(),service=serviceUtilityDecision_(applicant,statuses),matching={vehiclePrograms:[],chargerPrograms:[],mutuallyExclusiveWarning:null,context:{serviceUtility:service.utility}},priceType='',status=service.status,reason=service.reason;
+  if(service.allowed){
+    applicant.serviceType='chargerOnly';applicant.wantsCharger='yes';applicant.purchaseType='charger';applicant.resolvedUtility=service.utility;
+    matching=calculateMatching_(applicant,statuses);
+    var active=activeLeadPrograms_(matching).chargers;
+    priceType=active.length?'chargerOnly':'';status=priceType?'가능성있음':'부적격';reason=priceType?(service.reason||''):'활성충전기프로그램없음';
+  }
   var applicantJson=JSON.stringify(applicant),matchingJson=JSON.stringify(matching);
   if(applicantJson.length>45000||matchingJson.length>45000)throw Error('입력 내용이 너무 깁니다. 내용을 줄여주세요.');
   var now=new Date(),leadId='LEAD-'+Utilities.formatDate(now,Session.getScriptTimeZone(),'yyyyMMddHHmmss')+'-'+Utilities.getUuid().replace(/-/g,'');
-  withLock_(function(){sheets_().leads.appendRow([leadId,now,applicant.name,applicant.phone,applicant.email,applicantJson,matchingJson,priceType,status,'아니오',now,String(utm.source||'').slice(0,500),String(utm.medium||'').slice(0,500),String(utm.campaign||'').slice(0,500),String(utm.content||'').slice(0,500)]);});
+  withLock_(function(){sheets_().leads.appendRow([leadId,now,applicant.name,applicant.phone,applicant.email,applicantJson,matchingJson,priceType,status,'아니오',now,String(utm.source||'').slice(0,500),String(utm.medium||'').slice(0,500),String(utm.campaign||'').slice(0,500),String(utm.content||'').slice(0,500),reason]);});
   var emailSent=false;
-  try{sendLeadEmail_({leadId:leadId,name:applicant.name,email:applicant.email,status:status,priceType:priceType});emailSent=true;Logger.log('자격확인 안내 이메일 발송 성공: '+leadId);}catch(error){Logger.log('자격확인 안내 이메일 발송 실패: '+leadId+', 오류='+String(error&&error.message||error));}
+  try{if(status==='확인필요')notifyUtilityReviewLead_({leadId:leadId,name:applicant.name,phone:applicant.phone,zip:applicant.zip});else if(status==='보류')sendHeldLeadEmail_({name:applicant.name,email:applicant.email});else sendLeadEmail_({leadId:leadId,name:applicant.name,email:applicant.email,status:status,priceType:priceType});emailSent=status!=='확인필요';Logger.log('자격확인 안내 이메일 발송 성공: '+leadId);}catch(error){Logger.log('자격확인 안내 이메일 발송 실패: '+leadId+', 오류='+String(error&&error.message||error));}
   withLock_(function(){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r){sh.getRange(r.row,r.m['이메일발송여부']+1).setValue(emailSent?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}});
   return {success:true,leadId:leadId,status:status,emailSent:emailSent};
 }
@@ -431,12 +463,14 @@ function getLeadForContinue(leadId){
   var status=String(r.data[r.m['리드상태']]);
   if(status==='전환완료')return {success:false,error:'이미 처리된 신청입니다'};
   if(status!=='가능성있음')return {success:false,error:'유효하지 않거나 이미 처리된 링크입니다. 다시 자격 확인을 진행해주세요.'};
-  return {success:true,applicantData:json_(r.data[r.m['신청자정보JSON']],{}),priceType:String(r.data[r.m['추천가격유형']]||'')};
+  var applicant=json_(r.data[r.m['신청자정보JSON']],{}),priceType=String(r.data[r.m['추천가격유형']]||'');
+  if(priceType!=='chargerOnly'||!serviceUtilityDecision_(applicant,getProgramStatuses()).allowed)return {success:false,error:'현재 서비스 범위에서는 진행할 수 없는 신청입니다. 다시 자격 확인을 진행해주세요.'};
+  return {success:true,applicantData:applicant,priceType:priceType};
 }
 function markLeadConverted_(leadId){var sh=sheets_().leads,r=findRow_(sh,'리드ID',leadId);if(r&&r.data[r.m['리드상태']]!=='전환완료'){sh.getRange(r.row,r.m['리드상태']+1).setValue('전환완료');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());}}
 function listLeads(d){
   if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var wanted=String(d.status||'전체'),x=rows_(sheets_().leads),now=Date.now(),out=[];
-  for(var i=1;i<x.v.length;i++){var r=x.v[i],status=String(r[x.m['리드상태']]);if(wanted!=='전체'&&wanted!==status)continue;var created=r[x.m['생성일시']],createdMs=created instanceof Date?created.getTime():Date.parse(created);out.push({leadId:r[x.m['리드ID']],createdAt:date_(created),name:r[x.m['이름']],phone:r[x.m['연락처']],email:r[x.m['이메일']],priceType:r[x.m['추천가격유형']]||'',status:status,emailSent:r[x.m['이메일발송여부']]==='예',utmSource:r[x.m['UTM소스']]||'',utmMedium:r[x.m['UTM매체']]||'',utmCampaign:r[x.m['UTM캠페인']]||'',utmContent:r[x.m['UTM콘텐츠']]||'',needsResend:status==='가능성있음'&&isFinite(createdMs)&&now-createdMs>=7*86400000,updatedAt:date_(r[x.m['최종수정일시']])});}
+  for(var i=1;i<x.v.length;i++){var r=x.v[i],status=String(r[x.m['리드상태']]);if(wanted!=='전체'&&wanted!==status)continue;var created=r[x.m['생성일시']],createdMs=created instanceof Date?created.getTime():Date.parse(created);out.push({leadId:r[x.m['리드ID']],createdAt:date_(created),name:r[x.m['이름']],phone:r[x.m['연락처']],email:r[x.m['이메일']],priceType:r[x.m['추천가격유형']]||'',status:status,reason:r[x.m['사유']]||'',emailSent:r[x.m['이메일발송여부']]==='예',utmSource:r[x.m['UTM소스']]||'',utmMedium:r[x.m['UTM매체']]||'',utmCampaign:r[x.m['UTM캠페인']]||'',utmContent:r[x.m['UTM콘텐츠']]||'',needsResend:status==='가능성있음'&&isFinite(createdMs)&&now-createdMs>=7*86400000,updatedAt:date_(r[x.m['최종수정일시']])});}
   return out.sort(function(a,b){return String(b.createdAt).localeCompare(String(a.createdAt));});
 }
 function resendLeadEmail(leadId,d){
@@ -447,8 +481,9 @@ function resendLeadEmail(leadId,d){
 }
 
 /* 프로그램 점검일·DAC 수동 판정 확장. */
-ensureProgramStatus_=function(){var sh=ensure_('ProgramStatus',PROGRAM_HEADERS),memo='CARB 회계연도(7월 시작) 자금계획은 통상 가을(10~11월) 이사회 승인. 7월과 11월 두 시점에 재확인 권장';PROGRAM_NAMES.forEach(function(n){if(!findRow_(sh,'프로그램명',n))sh.appendRow([n,n==='SCAQMD_충전기리베이트'?'아니오':'예',new Date(),n==='RYR'?memo:'',n==='RYR'?'2026-11-15':'']);});var r=findRow_(sh,'프로그램명','RYR');if(r){if(!r.data[r.m['메모']])sh.getRange(r.row,r.m['메모']+1).setValue(memo);if(!r.data[r.m['다음확인예정일']])sh.getRange(r.row,r.m['다음확인예정일']+1).setValue('2026-11-15');}return sh;};
-getProgramStatusDetails_=function(){var x=rows_(sheets_().programStatus),out=[];for(var i=1;i<x.v.length;i++)out.push({programName:x.v[i][x.m['프로그램명']],active:x.v[i][x.m['활성여부']]==='예',updatedAt:date_(x.v[i][x.m['마지막업데이트일시']]),memo:x.v[i][x.m['메모']]||'',nextCheckDate:dateOnly_(x.v[i][x.m['다음확인예정일']])});return out;};
+ensureProgramStatus_=function(){var sh=ensure_('ProgramStatus',PROGRAM_HEADERS),memo='CARB 회계연도(7월 시작) 자금계획은 통상 가을(10~11월) 이사회 승인. 7월과 11월 두 시점에 재확인 권장',serviceMemo='충전기 설치 서비스를 제공하는 전력회사. SCE는 계약업체 등록 등 준비 후 켤 것';PROGRAM_NAMES.forEach(function(n){if(!findRow_(sh,'프로그램명',n)){var active=n==='SCAQMD_충전기리베이트'||n==='서비스유틸리티_SCE'?'아니오':'예',rowMemo=n==='RYR'?memo:n.indexOf('서비스유틸리티_')===0?serviceMemo:'';sh.appendRow([n,active,new Date(),rowMemo,n==='RYR'?'2026-11-15':'']);}});var r=findRow_(sh,'프로그램명','RYR');if(r){if(!r.data[r.m['메모']])sh.getRange(r.row,r.m['메모']+1).setValue(memo);if(!r.data[r.m['다음확인예정일']])sh.getRange(r.row,r.m['다음확인예정일']+1).setValue('2026-11-15');}return sh;};
+function heldLeadCountForUtility_(utility){var x=rows_(ensure_('Leads',LEAD_HEADERS)),count=0;for(var i=1;i<x.v.length;i++){if(String(x.v[i][x.m['리드상태']])!=='보류')continue;var a=json_(x.v[i][x.m['신청자정보JSON']],{}),selected=String(a.electricUtility||''),estimated=selected==='잘 모르겠음'?determineUtility_(a.zip).utility:selected;if(estimated===utility)count++;}return count;}
+getProgramStatusDetails_=function(){var x=rows_(sheets_().programStatus),out=[];for(var i=1;i<x.v.length;i++){var name=String(x.v[i][x.m['프로그램명']]),utility=name.indexOf('서비스유틸리티_')===0?name.replace('서비스유틸리티_',''):'';out.push({programName:name,active:x.v[i][x.m['활성여부']]==='예',updatedAt:date_(x.v[i][x.m['마지막업데이트일시']]),memo:x.v[i][x.m['메모']]||'',nextCheckDate:dateOnly_(x.v[i][x.m['다음확인예정일']]),heldLeadCount:utility?heldLeadCountForUtility_(utility):0});}return out;};
 updateProgramStatus=function(programName,active,memo,nextCheckDate){if(PROGRAM_NAMES.indexOf(programName)<0)throw Error('지원하지 않는 프로그램입니다.');nextCheckDate=String(nextCheckDate||'').trim();if(nextCheckDate&&!/^\d{4}-\d{2}-\d{2}$/.test(nextCheckDate))throw Error('다음 확인 예정일 형식이 올바르지 않습니다.');return withLock_(function(){var sh=sheets_().programStatus,r=findRow_(sh,'프로그램명',programName);if(!r)throw Error('프로그램 상태를 찾을 수 없습니다.');sh.getRange(r.row,r.m['활성여부']+1).setValue(active?'예':'아니오');sh.getRange(r.row,r.m['마지막업데이트일시']+1).setValue(new Date());sh.getRange(r.row,r.m['메모']+1).setValue(memo);sh.getRange(r.row,r.m['다음확인예정일']+1).setValue(nextCheckDate);return {success:true};});};
 function setDacStatus(caseId,status,d){if(!admin_(d))throw Error('관리자 인증이 필요합니다.');if(['DAC 해당','DAC 미해당','미확인'].indexOf(status)<0)throw Error('DAC 판정값이 올바르지 않습니다.');return withLock_(function(){var sh=sheets_().cases,r=findRow_(sh,'CaseID',caseId);if(!r)throw Error('케이스를 찾을 수 없습니다.');sh.getRange(r.row,r.m['DAC상태']+1).setValue(status);sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());return {success:true,dacStatus:status};});}
 function setLadwpThirdPartyGuidance(caseId,informed,d){if(!admin_(d))throw Error('관리자 인증이 필요합니다.');var checked=informed===true;return withLock_(function(){var sh=sheets_().cases,r=findRow_(sh,'CaseID',caseId);if(!r)throw Error('케이스를 찾을 수 없습니다.');var matching=json_(r.data[r.m['매칭결과JSON']],{}),chargers=Array.isArray(matching.chargerPrograms)?matching.chargerPrograms:[];if(!chargers.some(function(p){return p&&p.id==='LADWP_CHARGER';}))throw Error('LADWP 충전기 리베이트 후보 케이스가 아닙니다.');sh.getRange(r.row,r.m['LADWP제3자지정안내여부']+1).setValue(checked?'예':'아니오');sh.getRange(r.row,r.m['최종수정일시']+1).setValue(new Date());return {success:true,informed:checked};});}
