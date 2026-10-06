@@ -44,7 +44,7 @@ function environment(){
     Utilities:{getUuid:()=>crypto.randomUUID(),formatDate:()=>String(Date.now())},
     Session:{getScriptTimeZone:()=>'UTC'},
     Logger:{log:()=>{}},
-    MailApp:{sendEmail:message=>mails.push(message)},
+    MailApp:{sendEmail:message=>mails.push(message),getRemainingDailyQuota:()=>42},
     ContentService:{MimeType:{JSON:'json'},createTextOutput:text=>({setMimeType:()=>JSON.parse(text)})},
     UrlFetchApp:{fetch:(url,options)=>{
       assert(url.startsWith('https://api.stripe.com/v1/checkout/sessions/cs_test_'));
@@ -105,11 +105,16 @@ test('무료 자격확인 리드·이메일·결제 후 전환 분리',()=>{
   const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
   const checked=e.ctx.submitEligibilityCheck(applicant,{source:'meta',medium:'paid_social',campaign:'가을캠페인',content:'영상A'});assert.equal(checked.status,'가능성있음');assert.equal(e.cases(),0);assert.equal(e.tables.get('Leads').data.length,2);
   const leadSheet=e.tables.get('Leads'),leadMap=e.ctx.map_(leadSheet);assert.equal(leadSheet.data[1][leadMap['UTM소스']],'meta');assert.equal(leadSheet.data[1][leadMap['UTM매체']],'paid_social');assert.equal(leadSheet.data[1][leadMap['UTM캠페인']],'가을캠페인');assert.equal(leadSheet.data[1][leadMap['UTM콘텐츠']],'영상A');
-  assert.equal(e.mails.length,1);assert(!e.mails[0].body.includes('Replace Your Ride'));assert(e.mails[0].body.includes('선택하신 서비스: 충전기 또는 전기패널 업그레이드 지원 / 이용료: $149'));assert(!e.mails[0].body.includes('둘 다: $199'));assert(e.mails[0].htmlBody.includes('clean-ev-email-logo.png'));assert(e.mails[0].htmlBody.includes('계속 진행하기'));
+  assert.equal(e.mails.length,2);const customerMail=e.mails.find(mail=>mail.to===applicant.email),adminLeadMail=e.mails.find(mail=>mail.subject&&mail.subject.includes('신규 리드'));assert(customerMail);assert(adminLeadMail);assert(!customerMail.body.includes('Replace Your Ride'));assert(customerMail.body.includes('선택하신 서비스: 충전기 또는 전기패널 업그레이드 지원 / 이용료: $149'));assert(!customerMail.body.includes('둘 다: $199'));assert(customerMail.htmlBody.includes('clean-ev-email-logo.png'));assert(customerMail.htmlBody.includes('계속 진행하기'));assert(customerMail.htmlBody.includes('C-10 #1059763'));assert(!adminLeadMail.body.includes('C-10 #1059763'));
   const continued=e.ctx.getLeadForContinue(checked.leadId);assert.equal(continued.success,true);assert.equal(continued.priceType,'chargerOnly');
   const pending=e.ctx.createPendingPaymentFromLead(checked.leadId,'chargerOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:new Date().toISOString()});
-  assert.equal(e.cases(),0);const sid=e.paid(pending.token);assert.equal(e.ctx.verifyStripeSession(sid,pending.token).success,true);assert.equal(e.cases(),1);
+  assert.equal(e.cases(),0);const sid=e.paid(pending.token);assert.equal(e.ctx.verifyStripeSession(sid,pending.token).success,true);assert.equal(e.cases(),1);assert(e.mails.some(mail=>mail.subject&&mail.subject.includes('신규 결제 접수')));
   assert.equal(e.ctx.getLeadForContinue(checked.leadId).error,'이미 처리된 신청입니다');
+});
+test('결제 임시 게이트는 리드를 준비중으로 전환하고 관리자에게 알림',()=>{
+  const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
+  const checked=e.ctx.submitEligibilityCheck(applicant),result=e.ctx.markLeadPaymentWaiting(checked.leadId),sh=e.tables.get('Leads'),m=e.ctx.map_(sh);
+  assert.equal(result.status,'결제대기(준비중)');assert.equal(sh.data[1][m['리드상태']],'결제대기(준비중)');assert(e.mails.some(mail=>mail.subject&&mail.subject.includes('결제 오픈 대기 리드')));assert.equal(e.ctx.getLeadForContinue(checked.leadId).success,false);
 });
 test('서비스 지역 밖은 보류 이메일, 불명확 관할은 관리자 확인으로 분리',()=>{
   const held=environment(),heldApplicant={...held.applicant,electricUtility:'SCE'};delete heldApplicant.applicationConsent;delete heldApplicant.applicationConsentSignature;delete heldApplicant.applicationConsentAt;
@@ -237,6 +242,18 @@ test('환불 기록 부분 실패 후 최초 이력으로 복구',()=>{
   assert.equal(e.ctx.processRefund(id,'재시도 사유',auth).success,true);
   assert.equal(sh.data[1][m['환불사유']],'최초 사유');
   assert.equal(e.tables.get('StatusHistory').data.filter(row=>row[3]==='환불처리').length,1);
+});
+test('자체시공 정산 제외와 시공계약 체결 전 착공 차단',()=>{
+  const e=environment(),auth={adminPassword:'검증용'},contractor=e.ctx.registerContractor({contractor:{name:'JD Electric',phone:'213-555-0199',selfPerform:true}}),contractorSheet=e.tables.get('Contractors'),cr=e.ctx.findRow_(contractorSheet,'컨트랙터ID',contractor.contractorId);
+  e.ctx.withLock_(()=>{contractorSheet.getRange(cr.row,cr.m['라이선스만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본드만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본인확인방식']+1).setValue('관리자수동확인완료')});
+  const created=e.ctx.createCase_({applicant:e.applicant,matchingResult:{},programs:[]}),caseId=created.caseId;
+  e.ctx.assignCaseToContractor(caseId,contractor.contractorId,'대표님');const payments=e.tables.get('Payments'),pm=e.ctx.map_(payments);assert.equal(payments.data[1][pm['하청비지급상태']],'해당없음(자체시공)');
+  assert.throws(()=>e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'',agent:'JD Electric'}),/시공계약서 체결/);
+  assert.throws(()=>e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'',constructionContractOverride:true,...auth}),/시공계약서 체결/);
+  assert.equal(e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'대표 승인',constructionContractOverride:true,...auth}).success,true);
+  const cases=e.tables.get('Cases'),cm=e.ctx.map_(cases),caseRow=e.ctx.findRow_(cases,'CaseID',caseId);e.ctx.withLock_(()=>{cases.getRange(caseRow.row,cm['현재상태']+1).setValue('시공완료')});assert.equal(e.ctx.paymentCandidates_().length,0);
+  const saved=e.ctx.saveConstructionContract({caseId,contractAmount:8000,signedDate:'2026-10-06',cancellationNoticeDate:'2026-10-06',depositAmount:800,feeCreditApplied:'예',startDate:'2026-10-10',contractLink:'https://drive.google.com/example',...auth});assert.equal(saved.success,true);assert.equal(saved.constructionContract.contractAmount,8000);
+  assert.equal(e.ctx.getEmailQuota(auth).remaining,42);
 });
 test('환불 UI 배지·완료건 버튼 숨김·문자열 이스케이프',()=>{
   const html=fs.readFileSync(path.join(root,'admin.html'),'utf8');

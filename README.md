@@ -108,10 +108,11 @@ Meta 픽셀은 `site-config.js`의 `metaPixelId`에 실제 Pixel ID를 입력하
 1. Stripe 계정을 만들고 **일회성 USD $99 / $149 / $199 Payment Link**를 각각 생성합니다. 수량은 1로 고정하고 할인·자동 세금·통화 변환은 사용하지 않습니다. 서버는 정확한 금액을 대조합니다.
 2. 세 링크의 결제 후 이동 URL을 모두 다음으로 설정합니다: `https://tubasa22.github.io/ev-incentive-app/payment-success.html?session_id={CHECKOUT_SESSION_ID}`.
 3. 생성된 운영 링크를 `site-config.js`의 `SITE_CONFIG.stripe.live.paymentLinkVehicleOnly`, `paymentLinkChargerOnly`, `paymentLinkBundle`에 각각 입력합니다. 테스트 중에는 `SITE_CONFIG.stripe.test`의 테스트 링크와 `testMode: true`를 사용하며, 운영 전환 시 운영 비밀키와 함께 `testMode: false`로 바꿉니다. 현재는 기본 `https://buy.stripe.com/…` 링크를 지원합니다.
-4. Stripe 대시보드의 **Secret key**를 Apps Script Script Properties의 `STRIPE_SECRET_KEY`에 저장합니다. **Publishable key가 아닙니다.** 비밀키는 HTML·site-config.js·Git 저장소에 넣지 않습니다.
-5. 변경된 `apps-script/Code.gs`를 편집기에 반영하고 웹앱을 **새 버전으로 배포**합니다. PendingPayments 시트와 감사용 추가 컬럼은 첫 사용 시 자동 생성됩니다.
-6. 기존 `processPendingConfirmationEmails` 1분 주기 트리거와 메일·외부 요청 권한을 확인합니다. 결제 확인은 메일을 직접 보내지 않고 기존 발송 대기 처리에 연결합니다.
-7. 먼저 별도 테스트 시트·테스트 Payment Link·테스트 비밀키로 아래 시나리오를 확인합니다. `testMode: true`로 생성된 PendingPayments는 테스트 키·테스트 세션이 일치하면 소액 테스트 결제를 허용하지만 결제 완료 여부는 계속 확인합니다. 운영 전에는 운영용 링크 3개와 운영 Secret key를 함께 설정하고 `testMode: false`로 전환합니다. 운영 결제의 $99/$149/$199 금액 검증은 그대로 유지됩니다. 웹훅 등록과 웹훅 시크릿은 필요 없습니다.
+4. 실전 전환은 운영 Payment Link 3개 입력 → Script Properties의 `STRIPE_SECRET_KEY`를 운영 Secret key로 교체 → `testMode: false` → `paymentsOpen: true` 순서로 진행합니다. 현재 `paymentsOpen: false`에서는 일반 고객을 Stripe로 보내지 않고 `결제대기(준비중)` 리드와 관리자 알림만 생성하며, 대표 내부 테스트는 URL의 `internalTest=1`에서만 허용합니다.
+5. Stripe 대시보드의 **Secret key**를 Apps Script Script Properties의 `STRIPE_SECRET_KEY`에 저장합니다. **Publishable key가 아닙니다.** 비밀키는 HTML·site-config.js·Git 저장소에 넣지 않습니다.
+6. 변경된 `apps-script/Code.gs`를 편집기에 반영하고 웹앱을 **새 버전으로 배포**합니다. PendingPayments 시트와 감사용 추가 컬럼은 첫 사용 시 자동 생성됩니다.
+7. 기존 `processPendingConfirmationEmails` 1분 주기 트리거와 메일·외부 요청 권한을 확인합니다. 결제 확인은 메일을 직접 보내지 않고 기존 발송 대기 처리에 연결합니다.
+8. 먼저 별도 테스트 시트·테스트 Payment Link·테스트 비밀키로 아래 시나리오를 확인합니다. `testMode: true`로 생성된 PendingPayments는 테스트 키·테스트 세션이 일치하면 소액 테스트 결제를 허용하지만 결제 완료 여부는 계속 확인합니다. 운영 전에는 운영용 링크 3개와 운영 Secret key를 함께 설정하고 `testMode: false`로 전환합니다. 운영 결제의 $99/$149/$199 금액 검증은 그대로 유지됩니다. 웹훅 등록과 웹훅 시크릿은 필요 없습니다.
 
 ### 신청 토큰 전달 방식
 
@@ -173,6 +174,10 @@ LADWP 관할 충전기 케이스를 배정받은 컨트랙터에게는 포털에
 
 ## 기능 목록
 
+- [x] Stripe 실전 전 임시 결제 게이트, 내부 테스트 우회, 결제 오픈 대기 리드·관리자 알림
+- [x] 신규 리드/확인필요/결제대기/신규 결제 관리자 알림 및 대시보드 이메일 잔여 한도 경고
+- [x] JD Electric 자체시공 모드, 하청비 제외, Home Improvement Contract 필드·선금 한도·착공 보호 추적
+- [x] 공개 페이지와 고객 HTML 이메일의 C-10 #1059763 CSLB 면허 표기
 - [x] LADWP 충전기 설치 우선 접수, 유틸리티별 서비스 토글 및 범위 밖 보류·불명확 관할 관리자 확인
 - [x] 페이스북 프로필·커버·공유 PNG 및 독립형 재생성 도구
 - [x] LA·OC·사우스베이 중심 주력 프로그램 우선순위와 DCAP/CALeVIP 후순위 표시

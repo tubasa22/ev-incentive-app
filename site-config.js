@@ -4,8 +4,10 @@ window.SITE_CONFIG = {
   // site-config.js의 apiUrl을 실제 배포 URL로 채워야 동작함. GitHub Pages 등 웹서버에서 테스트하세요.
   apiUrl: 'https://script.google.com/macros/s/AKfycbz0qmWqV50uK5eEeN4Wu_zwql9RYJ1Y4TVPx6NwE3M67aJ37bZI5zTUpbm4Y-_mdKA/exec',
   contactEmail: 'jdlee.electric@gmail.com',
+  licenseText: '캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',
   serviceNote: '현재 LA시(LADWP 전력 지역) 충전기 설치 지원부터 서비스를 시작했습니다',
   metaPixelId: 'PASTE_META_PIXEL_ID_HERE',
+  paymentsOpen: false,
   pricing: {
     vehicleOnly: 99,
     chargerOnly: 149,
