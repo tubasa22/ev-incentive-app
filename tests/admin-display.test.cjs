@@ -18,4 +18,12 @@ assert(script.includes("$$('.manualPayment').forEach"),'여러 결제 버튼은 
 assert(!/(^|[^$])\$\('\.manualPayment'\)\.forEach/.test(script),'단일 요소 선택자에 forEach를 호출하면 안 됩니다.');
 assert(html.includes('내부 기록용입니다. 고객에게는 표시되지 않고 알림도 발송되지 않습니다.'),'LADWP 내부 기록 안내가 있어야 합니다.');
 assert(script.includes("saved.textContent='저장되었습니다'"),'LADWP 저장 성공 문구가 있어야 합니다.');
+assert(html.includes('class="table contractor-performance-table"'),'업체별 실적 표에 전용 레이아웃 클래스가 있어야 합니다.');
+assert(html.includes('.contractor-performance-table{table-layout:auto!important'),'업체 표는 table-layout:auto를 사용해야 합니다.');
+assert(html.includes('position:sticky;left:0'),'업체 첫 열은 가로 스크롤 중 고정되어야 합니다.');
+assert(html.includes('min-width:220px'),'신원/라이선스 확인 열의 최소 폭이 있어야 합니다.');
+assert(script.includes('<span>자체시공으로 지정</span>'),'자체시공 체크 문구는 상태와 무관하게 고정되어야 합니다.');
+assert(script.includes("c.selfPerform?'자체시공':'외부 업체'"),'자체시공 상태 배지가 별도로 표시되어야 합니다.');
+assert(script.includes("box.checked=previous"),'자체시공 저장 실패 시 체크 상태를 복원해야 합니다.');
+assert(script.includes("$('#contractorMsg').textContent='저장되었습니다'"),'자체시공 저장 성공 피드백이 있어야 합니다.');
 console.log('통과: 결제 미확인 0건/1건 표시와 LADWP 체크 UI 회귀 검증');
