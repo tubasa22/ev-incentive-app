@@ -1,5 +1,5 @@
 /* 실행: node tests/payment-pages.test.cjs — 화면 스크립트 모의 실행, 네트워크 사용 없음 */
-const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path'),nodeCrypto=require('node:crypto');
 const root=path.resolve(__dirname,'..');
 const inline=file=>[...fs.readFileSync(path.join(root,file),'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(Boolean).join('\n');
 function element(value=''){
@@ -12,7 +12,7 @@ async function intake(ready){
   let sent=[],redirect='';
   const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',legalBusinessName:'PASTE_CSLB_BUSINESS_NAME_HERE',paymentsOpen:true,licenseText:'캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{testMode:true,test:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_TEST_LINK_HERE'},live:{paymentLinkVehicleOnly:'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}}};
   const pageLocation={search:'?leadId=LEAD-test',assign:url=>redirect=url};
-  const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,location:pageLocation,
+  const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,TextEncoder,Uint8Array,crypto:{subtle:{digest:async()=>new Uint8Array(32).buffer}},SITE_CONFIG:config,location:pageLocation,
     document:{querySelector:get,querySelectorAll:s=>s==='.step'?[element()]:[]},
     FormData:class{*[Symbol.iterator](){yield* Object.entries({name:'테스트',phone:'123',email:'test@example.com',wantsCharger:'no',income:'10000',household:'1',zip:'90001',purchaseType:'new'});}},
     alert:message=>{throw Error(message);},

@@ -9,6 +9,7 @@ window.SITE_CONFIG = {
   serviceNote: '현재 LA시(LADWP 전력 지역) 충전기 설치 지원부터 서비스를 시작했습니다',
   metaPixelId: 'PASTE_META_PIXEL_ID_HERE',
   paymentsOpen: false,
+  CONSENT_VERSION: 'v1.0',
   pricing: {
     vehicleOnly: 99,
     chargerOnly: 149,

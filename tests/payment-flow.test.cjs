@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'apps-script/Code.gs'),'utf8');
 function environment(){
   const tables=new Map(),props={STRIPE_SECRET_KEY:'sk_test_검증용',ADMIN_PASSWORD:'검증용'};
-  let held=false,lockCount=0,session={},apiCode=200,failHistory=false,failFinalize=false,failRefund=false;const mails=[];
+  let held=false,lockCount=0,session={},apiCode=200,mailQuota=42,failHistory=false,failFinalize=false,failRefund=false;const mails=[],cache=new Map();
   class Sheet{
     constructor(name){this.name=name;this.data=[];}
     appendRow(row){
@@ -41,10 +41,11 @@ function environment(){
     PropertiesService:{getScriptProperties:()=>({getProperty:key=>props[key]||null})},
     SpreadsheetApp:{getActive:()=>({getSheetByName:name=>tables.get(name),insertSheet:name=>{assert(held);const sh=new Sheet(name);tables.set(name,sh);return sh;}})},
     LockService:{getScriptLock:()=>({waitLock:()=>{assert(!held,'중첩 잠금 방지');held=true;lockCount++;},releaseLock:()=>{held=false;}})},
-    Utilities:{getUuid:()=>crypto.randomUUID(),formatDate:()=>String(Date.now())},
+    Utilities:{DigestAlgorithm:{SHA_256:'SHA_256'},Charset:{UTF_8:'UTF_8'},computeDigest:(_algorithm,text)=>[...crypto.createHash('sha256').update(String(text)).digest()].map(n=>n>127?n-256:n),getUuid:()=>crypto.randomUUID(),formatDate:()=>String(Date.now())},
+    CacheService:{getScriptCache:()=>({get:key=>cache.get(key)||null,put:(key,value)=>cache.set(key,String(value)),remove:key=>cache.delete(key)})},
     Session:{getScriptTimeZone:()=>'UTC'},
     Logger:{log:()=>{}},
-    MailApp:{sendEmail:message=>mails.push(message),getRemainingDailyQuota:()=>42},
+    MailApp:{sendEmail:message=>mails.push(message),getRemainingDailyQuota:()=>mailQuota},
     ContentService:{MimeType:{JSON:'json'},createTextOutput:text=>({setMimeType:()=>JSON.parse(text)})},
     UrlFetchApp:{fetch:(url,options)=>{
       assert(url.startsWith('https://api.stripe.com/v1/checkout/sessions/cs_test_'));
@@ -64,7 +65,7 @@ function environment(){
   }
   function age(token){const sh=tables.get('PendingPayments'),row=sh.data.find(row=>row[0]===token);row[1]=new Date(Date.now()-25*3600000);}
   const cases=()=>tables.get('Cases').data.length-1;
-  return {ctx,props,tables,pending,paid,age,cases,applicant,mails,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,failRefund:()=>failRefund=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
+  return {ctx,props,tables,pending,paid,age,cases,applicant,mails,cache,setMailQuota:n=>mailQuota=n,failHistory:()=>failHistory=true,failFinalize:()=>failFinalize=true,failRefund:()=>failRefund=true,setApiCode:n=>apiCode=n,lockCount:()=>lockCount};
 }
 let checks=0;
 function test(name,fn){fn();checks++;console.log('통과: '+name);}
@@ -124,6 +125,41 @@ test('서비스 지역 밖은 보류 이메일, 불명확 관할은 관리자 �
   const program=held.tables.get('ProgramStatus'),pm=held.ctx.map_(program),ladwp=held.ctx.findRow_(program,'프로그램명','서비스유틸리티_LADWP'),sce=held.ctx.findRow_(program,'프로그램명','서비스유틸리티_SCE');assert.equal(ladwp.data[pm['활성여부']],'예');assert.equal(sce.data[pm['활성여부']],'아니오');held.ctx.withLock_(()=>program.getRange(sce.row,pm['활성여부']+1).setValue('예'));assert.equal(held.ctx.submitEligibilityCheck({...heldApplicant,email:'sce@example.com'}).status,'가능성있음');
   const review=environment(),unknown={...review.applicant,electricUtility:'잘 모르겠음',zip:'99999'};delete unknown.applicationConsent;delete unknown.applicationConsentSignature;delete unknown.applicationConsentAt;
   const needsReview=review.ctx.submitEligibilityCheck(unknown);assert.equal(needsReview.status,'확인필요');assert.equal(review.mails.length,1);assert.equal(review.mails[0].to,'jdlee.electric@gmail.com');assert(review.mails[0].subject.includes('전력회사 수동 확인 필요'));
+});
+test('허니팟·반복 제출·이메일 한도 남용 방지',()=>{
+  const bot=environment(),fake=bot.ctx.submitEligibilityCheck({...bot.applicant,website:'https://spam.example'});
+  assert.equal(fake.success,true);assert.equal(bot.tables.get('Leads').data.length,1);assert.equal(bot.mails.length,0);
+  const repeated=environment();
+  for(let i=0;i<4;i++)repeated.ctx.submitEligibilityCheck({...repeated.applicant,name:'반복 제출 '+i});
+  const leads=repeated.tables.get('Leads'),lm=repeated.ctx.map_(leads);
+  assert.equal(leads.data[4][lm['이메일발송여부']],'반복제출제한');
+  assert.equal(repeated.mails.filter(mail=>String(mail.subject||'').includes('반복 제출 의심')).length,1);
+  const quota=environment();quota.setMailQuota(9);
+  quota.ctx.submitEligibilityCheck({...quota.applicant,email:'quota@example.com',phone:'213-555-0199'});
+  const quotaLeads=quota.tables.get('Leads'),qm=quota.ctx.map_(quotaLeads);
+  assert.equal(quotaLeads.data[1][qm['이메일발송여부']],'한도초과');
+  assert.equal(quota.mails.filter(mail=>mail.to==='quota@example.com').length,0);
+});
+test('관리자 비밀번호 해시 저장·평문 자동 마이그레이션·로그인 잠금',()=>{
+  const e=environment(),master={adminPassword:'검증용'};
+  const created=e.ctx.registerAdmin('보안 관리자','secure@example.com','새비밀번호',master),admins=e.tables.get('Admins'),m=e.ctx.map_(admins);
+  const stored=e.ctx.findRow_(admins,'관리자ID',created.adminId);assert(String(stored.data[m['비밀번호']]).startsWith('sha256$'));
+  assert.equal(e.ctx.authenticateAdmin_({adminId:created.adminId,adminPassword:'새비밀번호'},false).success,true);
+  assert.equal('password' in e.ctx.listAdmins(master)[0],false);
+  e.ctx.withLock_(()=>admins.appendRow(['ADM-099','이전 관리자','legacy@example.com','평문비밀번호','예',new Date(),'']));
+  assert.equal(e.ctx.authenticateAdmin_({adminId:'ADM-099',adminPassword:'평문비밀번호'},true).success,true);
+  assert(String(e.ctx.findRow_(admins,'관리자ID','ADM-099').data[m['비밀번호']]).startsWith('sha256$'));
+  for(let i=0;i<5;i++)assert.equal(e.ctx.authenticateAdmin_({adminId:'ADM-099',adminPassword:'틀림'},true).success,false);
+  const locked=e.ctx.authenticateAdmin_({adminId:'ADM-099',adminPassword:'평문비밀번호'},true);
+  assert.equal(locked.success,false);assert(String(locked.error).includes('15분'));
+  assert.equal(e.mails.filter(mail=>String(mail.subject||'').includes('로그인 잠금')).length,1);
+});
+test('동의 기록은 결제대기에 버전·본문해시·서버 가격과 함께 보존',()=>{
+  const e=environment(),applicant={...e.applicant};delete applicant.applicationConsent;delete applicant.applicationConsentSignature;delete applicant.applicationConsentAt;
+  const lead=e.ctx.submitEligibilityCheck(applicant),agreedAt=new Date().toISOString();
+  e.ctx.createPendingPaymentFromLead(lead.leadId,'chargerOnly',{applicationConsent:'예',applicationConsentSignature:'테스트 신청자',applicationConsentAt:agreedAt,consentVersion:'v1.0',consentBodyHash:'a'.repeat(64),consentInternalTest:true});
+  const pending=e.tables.get('PendingPayments'),record=JSON.parse(pending.data[1][pending.data[0].indexOf('신청자정보임시JSON')]).consentRecord;
+  assert.equal(record.version,'v1.0');assert.equal(record.bodyHash,'a'.repeat(64));assert.equal(record.signature,'테스트 신청자');assert.equal(record.serviceType,'chargerOnly');assert.equal(record.amount,149);assert.equal(record.utility,'LADWP');assert.equal(record.legalBusinessName,'JD Electric');assert.equal(record.internalTest,true);
 });
 test('정상 결제·토큰 복원·반복 호출·메일 대기',()=>{
   const e=environment(),t=e.pending(),id=e.paid(t);

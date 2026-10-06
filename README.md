@@ -14,6 +14,10 @@
 
 관리자 상단 메뉴는 업무 흐름에 맞춰 **전체 대시보드 → 리드 관리 → 케이스 검토 → 일감 배정 → 업체 관리 → 지원자 검토 → 딜러 제휴 → 정산 관리 → 프로그램 관리 → 관리자 계정** 순으로 표시됩니다.
 
+런칭 전 운영 보완으로 자격확인 허니팟, 동일 연락처 24시간 반복 제출 제한, 고객 메일 잔여 한도 방어를 적용했습니다. 관리자 로그인은 ID별 5회 실패 시 15분 잠기며 신규 비밀번호는 솔트 SHA-256으로 저장되고 기존 평문 계정은 정상 로그인 때 자동 변환됩니다. 동의 시점에는 `CONSENT_VERSION`, 본문 해시, 서명·시간, 서버 검증 서비스·금액·전력회사·운영 상호·면허·테스트 여부를 함께 보존합니다.
+
+전체 대시보드 상단의 **오늘 확인할 것** 패널에서 최근 신규 리드, 결제대기, 결제 미확인, 시공계약 미체결 진행 건, LADWP 청구 마감 임박 건, 이메일 잔여 한도와 Stripe 내부 테스트 설정을 확인할 수 있습니다. 동의서 문구를 바꾸면 `site-config.js`의 `CONSENT_VERSION`과 `Code.gs`의 `APP_CONFIG.consentVersion`을 함께 올리세요.
+
 ## 광고 유입 추적
 
 `landing.html`과 `index.html`은 `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`를 브라우저 세션의 첫 유입 기준으로 보존합니다. 무료 자격확인 제출 시 Leads 시트의 UTM 전용 열에 저장되며, 관리자 **리드 관리**에서 소스와 캠페인을 확인할 수 있습니다. UTM이 없으면 `직접`으로 표시됩니다.
@@ -31,7 +35,7 @@ Meta 픽셀은 `site-config.js`의 `metaPixelId`에 실제 Pixel ID를 입력하
 1. 이 저장소를 GitHub Pages로 배포 (Settings → Pages → main 브랜치 선택)
 2. `apps-script/Code.gs` 내용을 Google Apps Script 프로젝트에 붙여넣고 웹앱으로 배포
 3. 배포된 Apps Script URL을 `site-config.js`의 `apiUrl`에 입력
-4. Apps Script 프로젝트의 Script Properties에 비상 백업용 마스터 비밀번호를 `ADMIN_PASSWORD` 키로 설정합니다. 최초 실행 시 이 값으로 `Admins` 시트에 `ADM-001` 대표님 계정이 자동 생성되며, 이후 관리자는 개별 ID와 비밀번호로 로그인할 수 있습니다.
+4. Apps Script 프로젝트의 Script Properties에 비상 백업용 마스터 비밀번호를 `ADMIN_PASSWORD` 키로 설정합니다. 최초 실행 시 이 값으로 `Admins` 시트에 `ADM-001` 대표님 계정이 자동 생성되며, 이후 관리자는 개별 ID와 비밀번호로 로그인할 수 있습니다. 개별 비밀번호는 솔트 SHA-256으로 저장되고 기존 평문 값은 첫 정상 로그인 시 자동 마이그레이션됩니다.
 5. GitHub Pages의 `/admin.html`에 접속해 해당 비밀번호로 로그인
 6. SMS OTP를 사용할 경우 Apps Script Script Properties에 `FEATURES_SMS_ENABLED=true`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM`을 설정
 ## 고객 접수확인 이메일 트리거 설정
