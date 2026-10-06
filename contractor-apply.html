@@ -48,4 +48,4 @@
   menu.addEventListener('click',event=>{if(event.target.closest('a'))setOpen(false);});
   window.matchMedia('(min-width:800px)').addEventListener('change',()=>setOpen(false));
 })();
-</script><script>(function(){var footer=document.querySelector('footer');if(footer&&SITE_CONFIG.licenseText){var line=document.createElement('p');line.textContent=SITE_CONFIG.licenseText;footer.appendChild(line)}})();</script></body></html>
+</script><script>(function(){var footer=document.querySelector('footer'),name=String(SITE_CONFIG.legalBusinessName||'').trim();if(!footer)return;if(name&&name.indexOf('PASTE_')!==0){var owner=document.createElement('p');owner.textContent='클린EV는 '+name+'가 운영하는 서비스입니다.';footer.appendChild(owner)}if(SITE_CONFIG.licenseText){var license=document.createElement('p');license.textContent=SITE_CONFIG.licenseText;footer.appendChild(license)}})();</script></body></html>

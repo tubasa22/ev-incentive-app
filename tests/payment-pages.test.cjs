@@ -10,7 +10,7 @@ function element(value=''){
 async function intake(ready){
   const nodes=new Map(),get=s=>{if(!nodes.has(s))nodes.set(s,element());return nodes.get(s);};
   let sent=[],redirect='';
-  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',paymentsOpen:true,licenseText:'캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{testMode:true,test:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_TEST_LINK_HERE'},live:{paymentLinkVehicleOnly:'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}}};
+  const config={apiUrl:'https://example.test/api',contactEmail:'test@example.com',legalBusinessName:'PASTE_CSLB_BUSINESS_NAME_HERE',paymentsOpen:true,licenseText:'캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',pricing:{vehicleOnly:99,chargerOnly:149,bundle:199,creditNote:'차감 안내'},stripe:{testMode:true,test:{paymentLinkVehicleOnly:ready?'https://buy.stripe.com/test_example?locale=ko':'PASTE_TEST_LINK_HERE'},live:{paymentLinkVehicleOnly:'PASTE_STRIPE_LINK_VEHICLE_ONLY_HERE'}}};
   const pageLocation={search:'?leadId=LEAD-test',assign:url=>redirect=url};
   const ctx=vm.createContext({console,URL,Date,JSON,Math,Number,Object,String,SITE_CONFIG:config,location:pageLocation,
     document:{querySelector:get,querySelectorAll:s=>s==='.step'?[element()]:[]},
@@ -48,7 +48,7 @@ async function successPage(responses,search='?session_id=cs_test_123',testMode=t
   return {get,calls,now,tracked};
 }
 (async()=>{
-  const indexScript=inline('index.html'),siteConfig=fs.readFileSync(path.join(root,'site-config.js'),'utf8');assert(indexScript.includes("action:'markLeadPaymentWaiting'"));assert(indexScript.includes('!CONFIG.paymentsOpen&&!internalTest'));assert(indexScript.includes('internalTest=1'));assert(siteConfig.includes('paymentsOpen: false'));assert(siteConfig.includes("licenseText: '캘리포니아 계약자 면허 C-10 #1059763 (CSLB)'"));for(const file of ['landing.html','about.html','legal.html','index.html','contractor-apply.html'])assert(fs.readFileSync(path.join(root,file),'utf8').includes('licenseText'),file+' 푸터에 면허 표기가 필요합니다.');
+  const indexScript=inline('index.html'),siteConfig=fs.readFileSync(path.join(root,'site-config.js'),'utf8');assert(indexScript.includes("action:'markLeadPaymentWaiting'"));assert(indexScript.includes('!CONFIG.paymentsOpen&&!internalTest'));assert(indexScript.includes('internalTest=1'));assert(siteConfig.includes('paymentsOpen: false'));assert(siteConfig.includes("legalBusinessName: 'PASTE_CSLB_BUSINESS_NAME_HERE'"));assert(siteConfig.includes("licenseText: '캘리포니아 계약자 면허 C-10 #1059763 (CSLB)'"));for(const file of ['landing.html','about.html','legal.html','index.html','contractor-apply.html']){const source=fs.readFileSync(path.join(root,file),'utf8');assert(source.includes('licenseText'),file+' 푸터에 면허 표기가 필요합니다.');assert(source.includes('legalBusinessName'),file+'에 CSLB 등록 상호 표시 로직이 필요합니다.');assert(source.includes('PASTE_'),file+'는 상호 플레이스홀더를 숨겨야 합니다.');}
   console.log('통과: 결제 임시 게이트와 internalTest 우회 분기');
   await intake(false);console.log('통과: 플레이스홀더는 임시 저장·결제 이동 없이 안내');
   await intake(true);console.log('통과: 동의 데이터·가격 유형 전송 및 client_reference_id 연결');
