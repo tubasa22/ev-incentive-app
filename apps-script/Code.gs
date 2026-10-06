@@ -1,5 +1,5 @@
 /** Google Sheets 바인딩 Apps Script. ADMIN_PASSWORD는 Script Properties에 설정합니다. */
-var APP_CONFIG={brandName:'클린EV',contactEmail:'jdlee.electric@gmail.com',legalBusinessName:'PASTE_CSLB_BUSINESS_NAME_HERE',licenseText:'캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',reviewTimelineDays:'영업일 기준 1~2일',programReviewNote:'프로그램에 따라 수 주에서 수개월까지 소요될 수 있습니다.'};
+var APP_CONFIG={brandName:'클린EV',contactEmail:'jdlee.electric@gmail.com',legalBusinessName:'JD Electric',licenseText:'캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',reviewTimelineDays:'영업일 기준 1~2일',programReviewNote:'프로그램에 따라 수 주에서 수개월까지 소요될 수 있습니다.'};
 var CASE_HEADERS=['CaseID','생성일시','담당자','신청자정보(JSON)','매칭프로그램목록(JSON)','현재상태','최종수정일시','컨트랙터ID','배정일시','연락선호방법','매칭결과JSON','확인메일발송상태','예상공사비','예상지원금한도','고객부담예상액','결제일시','환불처리여부','환불처리일시','환불사유','연계딜러ID','딜러소개일시','소개비수령여부','소개비수령액','소개비수령일','DAC상태','LADWP제3자지정안내여부','LADWP절차단계','테스트결제여부','시공계약금액','시공계약서명일','취소권고지일','선금액','이용료시공비차감여부','착공일','시공계약서링크'];
 var HISTORY_HEADERS=['CaseID','타임스탬프','이전상태','새상태','메모','담당자'];
 var CONTRACTOR_HEADERS=['컨트랙터ID','이름','연락처','액세스코드','계약시작일','계약서Drive링크','라이선스사본링크','본드사본링크','사업자증빙링크','건당단가','활성여부','생성일시','최종수정일시','라이선스번호','라이선스종류','라이선스만료일','본드회사명','본드번호','본드보장금액','본드만료일','계약서동의여부','계약서동의일시','계약서버전','라이선스수동확인여부','라이선스수동확인일시','본인확인방식','OTP코드','OTP발급시각','OTP검증시각','이메일','자체시공'];
