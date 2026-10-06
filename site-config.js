@@ -6,6 +6,7 @@ window.SITE_CONFIG = {
   contactEmail: 'jdlee.electric@gmail.com',
   legalBusinessName: 'JD Electric',
   licenseText: '캘리포니아 계약자 면허 C-10 #1059763 (CSLB)',
+  ownLicenseNumber: '1059763',
   serviceNote: '현재 LA시(LADWP 전력 지역) 충전기 설치 지원부터 서비스를 시작했습니다',
   metaPixelId: 'PASTE_META_PIXEL_ID_HERE',
   paymentsOpen: false,

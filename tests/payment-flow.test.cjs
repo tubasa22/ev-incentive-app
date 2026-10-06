@@ -280,17 +280,37 @@ test('환불 기록 부분 실패 후 최초 이력으로 복구',()=>{
   assert.equal(sh.data[1][m['환불사유']],'최초 사유');
   assert.equal(e.tables.get('StatusHistory').data.filter(row=>row[3]==='환불처리').length,1);
 });
-test('자체시공 정산 제외와 시공계약 체결 전 착공 차단',()=>{
-  const e=environment(),auth={adminPassword:'검증용'},contractor=e.ctx.registerContractor({contractor:{name:'JD Electric',phone:'213-555-0199',selfPerform:true}}),contractorSheet=e.tables.get('Contractors'),cr=e.ctx.findRow_(contractorSheet,'컨트랙터ID',contractor.contractorId);
-  e.ctx.withLock_(()=>{contractorSheet.getRange(cr.row,cr.m['라이선스만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본드만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본인확인방식']+1).setValue('관리자수동확인완료')});
+test('대표 면허 배정은 자체시공으로 기록하고 정산 제외·시공계약을 유지',()=>{
+  const e=environment(),auth={adminPassword:'검증용'},contractor=e.ctx.registerContractor({contractor:{name:'JD Electric',phone:'213-555-0199'}}),contractorSheet=e.tables.get('Contractors'),cr=e.ctx.findRow_(contractorSheet,'컨트랙터ID',contractor.contractorId);
+  e.ctx.withLock_(()=>{contractorSheet.getRange(cr.row,cr.m['라이선스번호']+1).setValue('105-9763');contractorSheet.getRange(cr.row,cr.m['라이선스만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본드만료일']+1).setValue(new Date(Date.now()+86400000));contractorSheet.getRange(cr.row,cr.m['본인확인방식']+1).setValue('관리자수동확인완료')});
   const created=e.ctx.createCase_({applicant:e.applicant,matchingResult:{},programs:[]}),caseId=created.caseId;
-  e.ctx.assignCaseToContractor(caseId,contractor.contractorId,'대표님');const payments=e.tables.get('Payments'),pm=e.ctx.map_(payments);assert.equal(payments.data[1][pm['하청비지급상태']],'해당없음(자체시공)');
+  const assigned=e.ctx.assignCaseToContractor(caseId,'__SELF__','대표님');assert.equal(assigned.constructionSubject,'자체시공');const payments=e.tables.get('Payments'),pm=e.ctx.map_(payments);assert.equal(payments.data[1][pm['하청비지급상태']],'해당없음(자체시공)');
+  const cases=e.tables.get('Cases'),cm=e.ctx.map_(cases),caseRow=e.ctx.findRow_(cases,'CaseID',caseId);assert.equal(caseRow.data[cm['시공주체']],'자체시공');
   assert.throws(()=>e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'',agent:'JD Electric'}),/시공계약서 체결/);
   assert.throws(()=>e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'',constructionContractOverride:true,...auth}),/시공계약서 체결/);
   assert.equal(e.ctx.updateStatus_({caseId,newStatus:'시공중',note:'대표 승인',constructionContractOverride:true,...auth}).success,true);
-  const cases=e.tables.get('Cases'),cm=e.ctx.map_(cases),caseRow=e.ctx.findRow_(cases,'CaseID',caseId);e.ctx.withLock_(()=>{cases.getRange(caseRow.row,cm['현재상태']+1).setValue('시공완료')});assert.equal(e.ctx.paymentCandidates_().length,0);
+  e.ctx.withLock_(()=>{cases.getRange(caseRow.row,cm['현재상태']+1).setValue('시공완료')});assert.equal(e.ctx.paymentCandidates_().length,0);
   const saved=e.ctx.saveConstructionContract({caseId,contractAmount:8000,signedDate:'2026-10-06',cancellationNoticeDate:'2026-10-06',depositAmount:800,feeCreditApplied:'예',startDate:'2026-10-10',contractLink:'https://drive.google.com/example',...auth});assert.equal(saved.success,true);assert.equal(saved.constructionContract.contractAmount,8000);
   assert.equal(e.ctx.getEmailQuota(auth).remaining,42);
+});
+test('대표 면허 비활성 경고·관리자 LADWP 처리·기존 자체시공 마이그레이션',()=>{
+  const e=environment(),auth={adminPassword:'검증용'},owner=e.ctx.registerContractor({contractor:{name:'JD Electric',phone:'213-555-0200'}}),contractors=e.tables.get('Contractors'),ownerRow=e.ctx.findRow_(contractors,'컨트랙터ID',owner.contractorId);
+  e.ctx.withLock_(()=>{contractors.getRange(ownerRow.row,ownerRow.m['라이선스번호']+1).setValue('105 9763');contractors.getRange(ownerRow.row,ownerRow.m['라이선스만료일']+1).setValue(new Date(Date.now()+86400000));contractors.getRange(ownerRow.row,ownerRow.m['본드만료일']+1).setValue(new Date(Date.now()+86400000));contractors.getRange(ownerRow.row,ownerRow.m['본인확인방식']+1).setValue('관리자수동확인완료')});
+  const programs=e.tables.get('ProgramStatus'),licenseStatus=e.ctx.findRow_(programs,'프로그램명','대표면허활성');e.ctx.withLock_(()=>programs.getRange(licenseStatus.row,licenseStatus.m['활성여부']+1).setValue('아니오'));
+  const created=e.ctx.createCase_({applicant:{...e.applicant,residenceType:'단독주택'},matchingResult:{vehiclePrograms:[],chargerPrograms:[{id:'LADWP_CHARGER'}]},paymentConfirmed:true});
+  assert.throws(()=>e.ctx.assignCaseToContractor(created.caseId,'__SELF__','대표님'),/대표 면허가 비활성/);
+  assert.equal(e.ctx.assignCaseToContractor(created.caseId,'__SELF__','대표님',{ownerLicenseOverride:true,ownerLicenseReason:'갱신 확인 중'}).constructionSubject,'자체시공');
+  assert.throws(()=>e.ctx.updateStatus_({caseId:created.caseId,newStatus:'방문예정',...auth}),/대표 면허가 비활성/);
+  assert.equal(e.ctx.updateStatus_({caseId:created.caseId,newStatus:'방문예정',ownerLicenseOverride:true,ownerLicenseReason:'서류 확인 완료',...auth}).success,true);
+  assert.equal(e.ctx.adminUpdateLadwpStep({caseId:created.caseId,stepNumber:1,...auth}).step,1);
+  assert.equal(e.ctx.saveLadwpClaimInfo({caseId:created.caseId,deadline:'2026-12-31',documentLink:'https://drive.google.com/claim',...auth}).success,true);
+  const detailed=e.ctx.findCases_(created.caseId,true)[0];assert.equal(detailed.ladwpClaimInfo.deadline,'2026-12-31');assert.equal(detailed.ladwpClaimInfo.documentLink,'https://drive.google.com/claim');
+  e.ctx.withLock_(()=>e.ctx.pendingSheet_());assert.equal(e.ctx.getDashboardSummary(7).todayChecks.ownerLicenseInactive,true);
+  assert(e.tables.get('StatusHistory').data.some(row=>String(row[4]).includes('대표 면허 비활성 예외')));
+
+  const legacy=e.ctx.registerContractor({contractor:{name:'기존 체크 업체',phone:'213-555-0300'}}),legacyRow=e.ctx.findRow_(contractors,'컨트랙터ID',legacy.contractorId),legacyCase=e.ctx.createCase_({applicant:e.applicant,matchingResult:{},paymentConfirmed:true}),cases=e.tables.get('Cases'),caseRow=e.ctx.findRow_(cases,'CaseID',legacyCase.caseId);
+  e.ctx.withLock_(()=>{contractors.getRange(legacyRow.row,legacyRow.m['자체시공']+1).setValue('예');cases.getRange(caseRow.row,caseRow.m['컨트랙터ID']+1).setValue(legacy.contractorId)});
+  assert.equal(e.ctx.migrateSelfPerformedCases_().changed,1);assert.equal(e.ctx.findRow_(cases,'CaseID',legacyCase.caseId).data[e.ctx.map_(cases)['시공주체']],'자체시공');
 });
 test('환불 UI 배지·완료건 버튼 숨김·문자열 이스케이프',()=>{
   const html=fs.readFileSync(path.join(root,'admin.html'),'utf8');
